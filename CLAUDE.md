@@ -9,9 +9,17 @@ manual: conventions, run commands, and the standing weaknesses the implementer
 must keep in view.
 
 ## Status
-- Built to **milestone M1** (ingest trio + A4 basis monitor). M2–M7 not started.
-- As of 2026-07-17: sixth day of US strikes; Hormuz re-blockaded; Brent ~$85–86.
-  Current regime ≈ **S2** (maritime/chokepoint war) with S3 events occurring.
+- **All milestones M1–M7 built and running** (2026-07-17). Daily driver:
+  `make refresh` (ingest -> models -> brief). See Milestones below for what
+  each layer does and its known limits.
+- As of 2026-07-17: seventh consecutive night of US strikes; Hormuz re-closed
+  (7dMA 16.4 calls/day = 22% of baseline); dual blockade reinstated; Brent ~$88.
+  Current regime **S2 with S3 events** (Kuwaiti desalination station hit Jul 17).
+- War chronology correction vs the design doc (from Wikipedia, coded into the
+  backfill): war opened 2026-02-28 at near-S4 intensity (Khamenei assassinated);
+  Hormuz closed ~Mar 6; the Apr 8 "ceasefire" was a ceasefire-plus-DUAL-BLOCKADE
+  (transits never recovered); Islamabad Memorandum signed Jun 14-17 produced only
+  a partial reopening (peak 41% of baseline); MOU collapsed Jul 8.
 
 ## Environment
 - Python 3.9, isolated venv at `.venv/` (system Python left untouched).
@@ -21,11 +29,15 @@ must keep in view.
   env-var NAME only in `config/sources.yaml` — never inline a key.
 
 ## Run commands
-- `make refresh`    — land all three sources + print the basis monitor
-- `make ingest`     — just the three ingests
-- `make monitor`    — recompute the A4 basis monitor from latest vintages
+- `make refresh`    — full daily pipeline: ingest -> derived models -> brief
+- `make ingest`     — data layer only (portwatch, polymarket, prices, curve, rnd, gdelt)
+- `make models`     — derived layer (predmkt, regime, events, habituation, hawkes, fingerprint)
+- `make brief`      — daily brief (state, P vs Q, signals, what-changed diff);
+                      snapshots to data/briefs/
+- `make monitor`    — A4 basis monitor; `make signals` — A1-A6 with rationale
+- `make backtest`   — falsification harness; `make stress` — peace-shock stress
+- `make backfill`   — reload frozen Feb-Jul coded history into the lake
 - `make test`       — timestamp-discipline tests
-- Individual: `.venv/bin/python -m src.ingest.{portwatch,polymarket,prices}`
 
 ## Repo layout
 - `config/` — `sources.yaml` (endpoints/tickers), `taxonomy.yaml` (S0–S5),
@@ -65,16 +77,42 @@ that lag must stay visible, not smoothed away.
 8. **Mearsheimer could be wrong.** His argument enters as an *overrulable* prior
    (`priors.yaml`, `prior_strength`). A5 (deal hedge) is mandatory, not optional.
 
-## Milestones
+## Milestones (all built 2026-07-17)
 - **M1 ✅** ingest trio + A4 monitor.
-- M2 LLM event/rhetoric coder (+ backfill, 100-event QA).
-- M3 Q extraction — curve + prediction-market panel first; RND/Breeden–Litzenberger
-  **deferred to last** (weakest free data, highest code cost).
-- M4 regime Markov model with `priors.yaml`.
-- M5 event studies, habituation curve, Hawkes intensity.
-- M6 signals A1–A6, walk-forward backtest (as *falsification*, not performance),
-  peace-shock stress.
-- M7 daily brief: state estimate, P vs Q table, live signals, what changed.
+- **M2 ✅** coding pipeline. Live coder (`src/coding/llm_coder.py`) needs
+  ANTHROPIC_API_KEY or the `claude` CLI — neither present at build time, so the
+  Feb–Jul backfill (51 events, 18 rhetoric rows) was coded in-session by Claude
+  Opus 4.8 from the Wikipedia chronology and FROZEN in
+  `config/coded_events_backfill.yaml` (coder_version=manual-opus-4.8-20260717).
+  GDELT ingest works but the DOC API rate-limits hard (1 req/5s, IP penalties) —
+  `make gdelt` is failure-tolerant; the rich backfill path was Wikipedia, not GDELT.
+- **M3 ✅** Q extraction: real futures month-ladder (BZ/CL contracts DO exist on
+  free yfinance — steep backwardation), USO/BNO Breeden–Litzenberger RND,
+  predmkt panel with the full normalization CDF, ridge-anchored fingerprint
+  inversion (soft cross-check only; buckets are collinear).
+- **M4 ✅** soft-label weekly classifier + conjugate Dirichlet–multinomial
+  transition posterior (closed form, no PyMC — Python 3.9 and n=20 weeks both
+  argue for it). Posterior currently **79% prior / 21% data** — printed on
+  every run; do not present P as data-driven.
+- **M5 ✅** event studies, habituation, Hawkes. Empirical verdicts on the doc's
+  hypotheses: novelty drift SUPPORTED (+16% vs +10% at 20d, overlapping-window
+  caveat); habituation WEAK (half-life ~31 events — A2 held FLAT); Hawkes
+  branching 0.89 near-critical but with an uninformatively wide profile range.
+- **M6 ✅** signals A1–A6 + falsification backtest + peace-shock stress. A3 and
+  A6 survive their perturbation grids; survival earns MONITORING, not capital.
+  Surprise finding: A1 currently fires SHORT — the market's normalization CDF
+  (24% by Sep 30) is already MORE pessimistic than the prior-driven model at 3m.
+  Caveat: the A1 comparison maps "not in S2+" to "normalized", which overstates
+  model-implied normalization (S1 can still have transits < 60) — refine before
+  trusting the direction.
+- **M7 ✅** `make brief` / `make refresh`. Briefs snapshot to `data/briefs/` and
+  diff headline numbers against the prior brief.
+
+## What accumulates value from here
+Every `make refresh` lands a new dated vintage. A1/A4 backtesting is impossible
+until a history of daily P and Q vintages exists — the system starts earning
+its keep after ~2-3 weeks of daily runs. The live LLM coder replaces the frozen
+backfill path as soon as a backend key is available.
 
 ## Verified data endpoints (2026-07-17)
 - PortWatch daily chokepoints: ArcGIS `Daily_Chokepoints_Data/FeatureServer/0`,
