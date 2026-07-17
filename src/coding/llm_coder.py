@@ -30,7 +30,8 @@ import pandas as pd
 from src.common import read_latest, write_partition
 
 PROMPTS = Path(__file__).parent / "prompts"
-RUNG_PROMPT_VERSION = "rung_mapper_v1"
+RUNG_PROMPT_VERSION = "rung_mapper_v2"  # v2 migration 2026-07-17: S4 strictness
+#                                         + escalatory-diplomacy-is-not-S5 (QA vs backfill)
 RHETORIC_PROMPT_VERSION = "rhetoric_v1"
 API_MODEL = "claude-sonnet-4-6"
 
@@ -112,6 +113,28 @@ def code_window(headlines: pd.DataFrame, coder_version: str) -> tuple[list[dict]
     return events, scores
 
 
+def _frozen_backfill() -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Load the canonical frozen history from the YAML (never from the lake —
+    a prior bad vintage must not poison the merge)."""
+    import yaml
+
+    from src.common import CONFIG_DIR
+
+    with open(CONFIG_DIR / "coded_events_backfill.yaml") as fh:
+        raw = yaml.safe_load(fh)
+    ev = pd.DataFrame(raw["events"])
+    ev["coder_version"] = "manual-opus-4.8-20260717"
+    ev["prompt_version"] = "rung_mapper_v1"
+    ev["source"] = "wikipedia:2026_Iran_war (fetched 2026-07-17)"
+    rh = pd.DataFrame(raw["rhetoric"])
+    rh["coder_version"] = "manual-opus-4.8-20260717"
+    rh["prompt_version"] = "rhetoric_v1"
+    rh["source"] = "wikipedia:2026_Iran_war (fetched 2026-07-17)"
+    for df in (ev, rh):
+        df["date"] = df["date"].astype(str)
+    return ev, rh
+
+
 def main() -> int:
     art = read_latest("gdelt_articles")
     coder_version = f"{_backend()}-{API_MODEL}"
@@ -122,12 +145,50 @@ def main() -> int:
         all_scores.extend(sc)
         print(f"[coder] {ws}..{we}: {len(ev)} events, {len(sc)} rhetoric rows",
               file=sys.stderr)
+
+    # Raw live codings land separately for audit/QA — never merged blindly.
     if all_events:
-        out = write_partition(pd.DataFrame(all_events), "coded_events")
-        print(f"[coder] {len(all_events)} events -> {out}")
-    if all_scores:
-        out = write_partition(pd.DataFrame(all_scores), "rhetoric")
-        print(f"[coder] {len(all_scores)} rhetoric rows -> {out}")
+        out = write_partition(pd.DataFrame(all_events), "coded_events_live_raw")
+        print(f"[coder] raw live codings -> {out}")
+
+    # Merge policy: frozen backfill is canonical through its max date; live
+    # events APPEND strictly after it. This is what "the live coder appends,
+    # it never re-codes history" means mechanically — same-window live rows
+    # are duplicates of frozen coverage and are dropped (kept in _live_raw).
+    ev_frozen, rh_frozen = _frozen_backfill()
+
+    def merge(frozen: pd.DataFrame, live_new: list[dict], source: str,
+              dedupe_keys: list[str]) -> pd.DataFrame:
+        cutoff = frozen["date"].max()
+        new = pd.DataFrame(live_new)
+        fresh = new[new["date"].astype(str) > cutoff] if len(new) else new
+        # carry forward live rows appended by PRIOR runs (they age out of the
+        # sliding headline window, so today's codings alone don't cover them)
+        try:
+            prior = read_latest(source)
+            prior_live = prior[prior["date"].astype(str) > cutoff]
+        except FileNotFoundError:
+            prior_live = pd.DataFrame()
+        live_all = pd.concat([prior_live, fresh], ignore_index=True)
+        if len(live_all):
+            # coarse dedupe: LLM phrasing varies run-to-run, so exact 'action'
+            # match would miss dupes; may merge distinct same-day same-type
+            # events — acceptable cost, noted.
+            live_all = live_all.drop_duplicates(subset=dedupe_keys, keep="first")
+        merged = pd.concat([frozen, live_all], ignore_index=True)
+        n_dropped = (len(new) - len(fresh)) if len(new) else 0
+        print(f"[coder] {source} = {len(frozen)} frozen + {len(live_all)} live "
+              f"(dropped {n_dropped} overlapping <= {cutoff})")
+        return merged
+
+    merged_ev = merge(ev_frozen, all_events, "coded_events",
+                      ["date", "actor", "rung", "target_type"])
+    out = write_partition(merged_ev, "coded_events")
+    print(f"[coder] -> {out}")
+
+    merged_rh = merge(rh_frozen, all_scores, "rhetoric", ["date", "actor"])
+    out = write_partition(merged_rh, "rhetoric")
+    print(f"[coder] -> {out}")
     return 0
 
 

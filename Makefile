@@ -4,11 +4,11 @@ PY = .venv/bin/python
         portwatch polymarket prices gdelt curve rnd predmkt fingerprint \
         regime events habituation hawkes backfill
 
-# Daily driver: land fresh data, rebuild derived layers, emit the brief.
-refresh: ingest models brief
+# Daily driver: land fresh data, code new events, rebuild derived layers, brief.
+refresh: ingest code models brief
 
 # --- ingest layer ---------------------------------------------------------
-ingest: portwatch polymarket prices curve rnd gdelt
+ingest: portwatch polymarket prices curve rnd headlines
 
 portwatch:
 	$(PY) -m src.ingest.portwatch
@@ -25,10 +25,22 @@ curve:
 rnd:
 	$(PY) -m src.market_implied.rnd
 
-# GDELT is rate-limited (1 req/5s, aggressive IP penalties) — failures must
-# not break the refresh; the coder just skips a day.
+# Headlines for the coder: Google News RSS is the reliable primary; GDELT is
+# preferred when its rate limiter cooperates (richer metadata) but must never
+# break the refresh — both write to the same gdelt_articles source.
+headlines: newsrss gdelt
+
+newsrss:
+	-$(PY) -m src.ingest.newsrss
+
 gdelt:
 	-$(PY) -m src.ingest.gdelt
+
+# --- coding layer ---------------------------------------------------------
+# Live LLM coder (needs ANTHROPIC_API_KEY in .env, or claude CLI). Failure
+# tolerated: the day's events just go uncoded until the next run.
+code:
+	-$(PY) -m src.coding.llm_coder
 
 # --- derived layers -------------------------------------------------------
 models: predmkt regime events habituation hawkes fingerprint

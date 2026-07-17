@@ -79,13 +79,19 @@ that lag must stay visible, not smoothed away.
 
 ## Milestones (all built 2026-07-17)
 - **M1 ✅** ingest trio + A4 monitor.
-- **M2 ✅** coding pipeline. Live coder (`src/coding/llm_coder.py`) needs
-  ANTHROPIC_API_KEY or the `claude` CLI — neither present at build time, so the
-  Feb–Jul backfill (51 events, 18 rhetoric rows) was coded in-session by Claude
-  Opus 4.8 from the Wikipedia chronology and FROZEN in
-  `config/coded_events_backfill.yaml` (coder_version=manual-opus-4.8-20260717).
-  GDELT ingest works but the DOC API rate-limits hard (1 req/5s, IP penalties) —
-  `make gdelt` is failure-tolerant; the rich backfill path was Wikipedia, not GDELT.
+- **M2 ✅ (live coder ONLINE)** — ANTHROPIC_API_KEY is in `.env` (gitignored,
+  auto-loaded by `src/common.py`); the coder runs claude-sonnet-4-6 in the
+  daily chain (`make code`). The Feb–Jul backfill (51 events, 18 rhetoric rows)
+  was coded in-session by Claude Opus 4.8 from the Wikipedia chronology and is
+  FROZEN in `config/coded_events_backfill.yaml` — canonical through 2026-07-17;
+  live codings append strictly after that date (merge logic in llm_coder.main;
+  raw live output audited in `coded_events_live_raw`).
+  **Prompt migration precedent:** QA of the first live run vs the frozen
+  backfill caught S4 over-assignment and escalatory-diplomacy-coded-as-S5 →
+  rung_mapper_v2 (v1 stays frozen). v2 verified: spurious S4s went 8 → 0.
+  Headlines: Google News RSS (`make newsrss`) is the reliable primary; GDELT's
+  DOC API rate-limits brutally (1 req/5s, sticky IP penalties) and is kept as a
+  failure-tolerant secondary.
 - **M3 ✅** Q extraction: real futures month-ladder (BZ/CL contracts DO exist on
   free yfinance — steep backwardation), USO/BNO Breeden–Litzenberger RND,
   predmkt panel with the full normalization CDF, ridge-anchored fingerprint

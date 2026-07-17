@@ -22,6 +22,25 @@ CONFIG_DIR = REPO_ROOT / "config"
 DATA_DIR = REPO_ROOT / "data"
 
 
+def _load_dotenv() -> None:
+    """Load .env (gitignored) into os.environ without overriding existing vars.
+    Hand-rolled to avoid a dependency; KEY=VALUE lines only, # comments ignored."""
+    import os
+
+    env_file = REPO_ROOT / ".env"
+    if not env_file.exists():
+        return
+    for line in env_file.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, val = line.partition("=")
+        os.environ.setdefault(key.strip(), val.strip())
+
+
+_load_dotenv()
+
+
 def utcnow() -> _dt.datetime:
     """Timezone-aware UTC now. Single source of 'now' for the whole codebase."""
     return _dt.datetime.now(_dt.timezone.utc)
