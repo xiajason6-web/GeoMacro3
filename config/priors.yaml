@@ -1,0 +1,35 @@
+# The Mearsheimer file (design doc §1, §5). Dirichlet priors on the rows of the
+# S0-S5 Markov transition matrix, encoding his structural argument as INFORMATIVE
+# but OVERRULABLE priors. Consumed by M4 (src/model/regime_markov.py). Present
+# now so the thesis is version-controlled from day one, not retrofitted.
+#
+# Each row = Dirichlet concentration params (pseudo-counts) over next-state.
+# Larger value = more prior mass. The four restrictions being encoded:
+#   1. No coercive leverage  -> transition tit-for-tat -> durable de-escalation is LOW
+#   2. No coherent objective  -> fat right tail on duration (low exit hazard)
+#   3. Asymmetric escalation  -> from S1/S2, upward mass >= mass toward S5
+#   4. Face-lock              -> high diagonal (state persistence); exits are lumpy
+#
+# S5 is NOT absorbing — the Feb-Jul 2026 history (deal -> reopening -> re-closure)
+# is direct evidence that deals decay back into conflict.
+
+# Order of columns in each row: [S0, S1, S2, S3, S4, S5]
+transition_dirichlet:
+  S0: [8, 4, 1, 0.5, 0.2, 0.5]     # lull is fairly sticky; drifts back to tit-for-tat
+  S1: [1, 8, 4, 1.5, 0.5, 2]       # face-lock diagonal; upward (S2+S3) mass >= S5 mass
+  S2: [0.5, 2, 8, 3, 1, 2]         # current regime: sticky; S3 escalation >= S5 resolution
+  S3: [0.3, 1, 3, 7, 2, 1.5]       # infra war persists; can climb to S4
+  S4: [0.2, 0.5, 1, 2, 8, 1]       # all-out war is very sticky; exit only via big shock
+  S5: [3, 2, 2, 0.5, 0.2, 4]       # deals decay: real mass back into S1/S2 (spring precedent)
+
+# Hazard-rate covariates: transitions are allowed to depend on these live signals
+# (multinomial logistic transition model, M4). Listed here as the contract.
+covariates:
+  - rhetoric_score          # LLM-coded, leads kinetic action (M2)
+  - novelty_event_flag      # first-of-kind rung fires repricing (M2)
+  - polymarket_deal_odds    # deal-market momentum (M1 predmkt panel)
+  - hawkes_intensity        # self-exciting escalation clustering (M5)
+
+# Honesty knob: how strongly the priors bind vs. the ~20 weeks of data.
+# 1.0 = use as written; scale down to let sparse data speak louder. Stress this.
+prior_strength: 1.0

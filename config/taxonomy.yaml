@@ -1,0 +1,44 @@
+# Escalation state machine (design doc §2). States are ORDINAL but only
+# PARTIALLY ordered — S3 can occur without S2 fully holding. The classifier
+# keys off observable criteria (transit counts, target-type taxonomy) so
+# labeling is reproducible. M1 only uses the S2 transit thresholds (via the
+# basis monitor); the full classifier lands in M4.
+
+states:
+  S0:
+    name: "Lull / cold hostility"
+    criteria: "No kinetic events for 14d; Hormuz transits > 80% of baseline"
+  S1:
+    name: "Calibrated tit-for-tat"
+    criteria: "Kinetic exchanges present; targets mostly military; Hormuz degraded but > 30% baseline"
+  S2:
+    name: "Maritime / chokepoint war"
+    criteria: "Tanker strikes, mining, blockade; PortWatch Hormuz 7d-avg transits < 30% of baseline (~<25 calls/day)"
+  S3:
+    name: "Gulf infrastructure war"
+    criteria: "Strikes on third-country energy/water/desalination/export infra (Qatar, Kuwait, Saudi, UAE)"
+  S4:
+    name: "All-out war"
+    criteria: "Ground/regime-target ops; strait closed indefinitely; Gulf production materially offline"
+  S5:
+    name: "De-escalation / deal"
+    criteria: "Announced ceasefire or deal AND transits recovering toward baseline"
+
+# The open modeling question the doc flags: is S3 a RUNG or a TRANSITION?
+# Unresolvable with n=1. Carry S2/S3 as a probability blend, never hard-label.
+substate_flags:
+  - s3_events_during_s2   # current regime (Jul 2026): S2 with S3 events occurring
+
+# Target-type taxonomy for the LLM rung-mapper (M2 consumes this).
+target_types:
+  military:      "Bases, naval assets, air defense, IRGC/military personnel"
+  energy:        "Refineries, terminals, pipelines, oil/gas fields"
+  water:         "Desalination plants (Riyadh/Kuwait ~90%, Oman 76% dependence)"
+  export_infra:  "Ports, loading facilities, export terminals"
+  civilian:      "Non-military, non-infrastructure population targets"
+  maritime:      "Tankers, commercial shipping, mining of sea lanes"
+
+# Thresholds used by the M1 basis monitor (derived from states above).
+thresholds:
+  s2_transit_fraction_of_baseline: 0.30   # below this 7dMA fraction => S2 maritime war
+  s0_transit_fraction_of_baseline: 0.80   # above this => lull

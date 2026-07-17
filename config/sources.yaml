@@ -1,0 +1,34 @@
+# M1 data sources. Endpoints verified live 2026-07-17.
+# Secrets are NEVER stored here — only env-var names. (M1 uses no keyed APIs.)
+
+portwatch:
+  # IMF PortWatch daily chokepoint transit calls. This is the keystone series:
+  # it is BOTH the S2 threshold input to the regime model (P) AND Polymarket's
+  # resolution source (Q). Stored once here; both sides reference this vintage.
+  # Layer verified: fields = date(epoch-ms), portname, n_total, n_tanker,
+  # n_cargo, n_container, n_dry_bulk, n_general_cargo, n_roro, capacity_*.
+  feature_server: "https://services9.arcgis.com/weJ1QsnbMYJlCHdG/ArcGIS/rest/services/Daily_Chokepoints_Data/FeatureServer/0"
+  chokepoint: "Strait of Hormuz"
+  # "Normal" per Polymarket resolution criteria: 7-day MA of transit calls >= 60.
+  normal_threshold_7dma: 60
+  # Pre-escalation baseline window for computing "% of baseline" (calm period).
+  baseline_window: ["2026-01-01", "2026-02-15"]
+
+polymarket:
+  gamma_search: "https://gamma-api.polymarket.com/public-search"
+  gamma_markets: "https://gamma-api.polymarket.com/markets"
+  # Keyword families to pull. Store resolution-criteria text with every price
+  # (criteria drift is a known Q hazard — see CLAUDE.md weaknesses).
+  search_terms: ["hormuz", "iran", "strait of hormuz", "iran israel", "iran deal", "iran ceasefire"]
+
+prices:
+  # yfinance tickers. Front-month continuous only in M1 — the individual
+  # futures-month ladder (front-to-6M / front-to-12M spreads, §4.2) is NOT
+  # reliably available on free yfinance and is deferred to M3.
+  crude_front: ["BZ=F", "CL=F"]        # Brent, WTI front-month continuous
+  crude_etf: ["USO", "BNO"]            # ETF proxies (embed roll — shape not level)
+  vol: ["^OVX", "^VIX"]                # oil vol index, equity vol
+  energy_equity: ["XLE", "XOP", "OIH"]
+  tanker_equity: ["FRO", "INSW", "TNK", "TRMD", "NAT", "STNG"]
+  cross_asset: ["ITA", "PPA", "JETS", "GLD", "DX-Y.NYB"]
+  lookback_days: 400

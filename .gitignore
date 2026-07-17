@@ -1,0 +1,15 @@
+# Data lake — vintaged parquet, never committed
+data/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Secrets
+.env
+*.local
+
+# OS
+.DS_Store
