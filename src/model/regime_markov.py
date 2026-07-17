@@ -34,10 +34,15 @@ N_SIM = 20_000
 RNG_SEED = 20260717  # fixed: reproducible runs, vintage discipline
 
 
-def posterior_matrix(labels: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Returns (posterior mean T, prior pseudocount matrix, observed count matrix)."""
+def posterior_matrix(
+    labels: pd.DataFrame, prior_strength: float | None = None
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Returns (posterior mean T, prior pseudocount matrix, observed count matrix).
+    prior_strength overrides config when given (the dashboard's Mearsheimer knob:
+    0 = data only, 1 = priors as written, >1 = prior-dominated)."""
     priors_cfg = load_config("priors")
-    strength = float(priors_cfg.get("prior_strength", 1.0))
+    strength = (float(priors_cfg.get("prior_strength", 1.0))
+                if prior_strength is None else float(prior_strength))
     prior = np.array(
         [priors_cfg["transition_dirichlet"][s] for s in STATES], dtype=float
     ) * strength
@@ -95,9 +100,9 @@ def touch_probabilities(T: np.ndarray, p0: np.ndarray, max_weeks: int = 52) -> d
     }
 
 
-def run() -> dict:
+def run(prior_strength: float | None = None) -> dict:
     labels = label_weeks()
-    T, prior, counts = posterior_matrix(labels)
+    T, prior, counts = posterior_matrix(labels, prior_strength)
     p0 = labels[[f"p_{s}" for s in STATES]].iloc[-1].values.astype(float)
     p0 = p0 / p0.sum()
 
