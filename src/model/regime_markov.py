@@ -37,11 +37,17 @@ RNG_SEED = 20260717  # fixed: reproducible runs, vintage discipline
 def posterior_matrix(
     labels: pd.DataFrame,
     prior_strength: float | None = None,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Returns (posterior mean T, prior pseudocount matrix, observed count matrix).
-    prior_strength overrides config when given (the dashboard's Mearsheimer knob:
-    0 = data only, 1 = priors as written, >1 = prior-dominated). The prior is the
-    horizontal-escalation thesis in priors.yaml (S3 attractor, S4 decays)."""
+    use_covariates: bool = False,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
+    """Returns (posterior mean T, prior pseudocount matrix, observed count matrix,
+    covariate_info). prior_strength overrides config when given (the dashboard's
+    Mearsheimer knob: 0 = data only, 1 = priors as written, >1 = prior-dominated).
+    The prior is the horizontal-escalation thesis in priors.yaml.
+
+    use_covariates=True applies the M9 endurance layer: the current 8a munitions
+    and 8c spread readings modulate specific transition cells (S4 gate, S3 pump)
+    before renormalization — the endurance measurements finally move P. Off by
+    default recovers the static model exactly."""
     priors_cfg = load_config("priors")
     strength = (float(priors_cfg.get("prior_strength", 1.0))
                 if prior_strength is None else float(prior_strength))
@@ -57,8 +63,12 @@ def posterior_matrix(
         counts += np.outer(P[t], P[t + 1])
 
     post = prior + counts
+    cov_info: dict = {}
+    if use_covariates:
+        from src.model.covariates import apply as apply_cov
+        post, cov_info = apply_cov(post)
     T = post / post.sum(axis=1, keepdims=True)
-    return T, prior, counts
+    return T, prior, counts, cov_info
 
 
 def horizon_forecast(T: np.ndarray, p0: np.ndarray) -> dict[str, np.ndarray]:
@@ -103,9 +113,11 @@ def touch_probabilities(T: np.ndarray, p0: np.ndarray, max_weeks: int = 52) -> d
     }
 
 
-def run(prior_strength: float | None = None) -> dict:
+def run(prior_strength: float | None = None, use_covariates: bool = True) -> dict:
+    """use_covariates defaults True: the live model now runs with the M9
+    endurance layer wired in. Pass False for the static-prior baseline."""
     labels = label_weeks()
-    T, prior, counts = posterior_matrix(labels, prior_strength)
+    T, prior, counts, cov_info = posterior_matrix(labels, prior_strength, use_covariates)
     p0 = labels[[f"p_{s}" for s in STATES]].iloc[-1].values.astype(float)
     p0 = p0 / p0.sum()
 
@@ -116,6 +128,7 @@ def run(prior_strength: float | None = None) -> dict:
     return {
         "labels": labels, "T": T, "prior": prior, "counts": counts,
         "p0": p0, "forecasts": fc, "touch": touch, "data_weight": data_weight,
+        "covariates": cov_info, "use_covariates": use_covariates,
     }
 
 
@@ -135,6 +148,11 @@ def main() -> int:
           + ", ".join(f"{s}={p:.0%}" for s, p in zip(STATES, r["p0"]) if p > 0.01))
     print(f"[regime] posterior is {r['data_weight']:.0%} data / "
           f"{1-r['data_weight']:.0%} prior (by pseudo-count mass)")
+    ci = r.get("covariates") or {}
+    if ci:
+        print(f"[regime] M9 endurance covariates ON: munitions p_a={ci['p_a']:.2f} "
+              f"(cost-exchange {ci['munitions'].get('cost_exchange_ratio', 0):.1f}:1), "
+              f"spread p_c={ci['p_c']:.2f} -> S3 pump, S4 gate active")
     for h in HORIZONS_WEEKS:
         dist = r["forecasts"][h]
         print(f"[regime] {h:>3}: " + ", ".join(

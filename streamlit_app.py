@@ -109,11 +109,14 @@ def build_lake() -> dict:
 @st.cache_data(ttl=3600, show_spinner="Running regime model...")
 def regime(prior_strength: float, _lake_key: str) -> dict:
     from src.model.regime_markov import run
-    r = run(prior_strength)
+    r = run(prior_strength, use_covariates=True)          # live: M9 endurance ON
+    static = run(prior_strength, use_covariates=False)    # static-prior baseline
     return {
         "labels": r["labels"], "p0": r["p0"], "T": r["T"],
         "forecasts": {k: list(map(float, v)) for k, v in r["forecasts"].items()},
+        "static_forecasts": {k: list(map(float, v)) for k, v in static["forecasts"].items()},
         "touch": r["touch"], "data_weight": r["data_weight"],
+        "covariates": r.get("covariates") or {},
     }
 
 
@@ -304,6 +307,16 @@ with tab_pq:
                    f"{1-reg['data_weight']:.0%} prior at strength={prior_strength}. "
                    + (f"Median weeks to S5 when reached: {mwks:.0f}."
                       if mwks is not None else "S5 not reached in simulation."))
+        ci = reg.get("covariates") or {}
+        if ci and "static_forecasts" in reg:
+            s3d = reg["forecasts"]["3m"][3] - reg["static_forecasts"]["3m"][3]
+            s4d = reg["forecasts"]["3m"][4] - reg["static_forecasts"]["3m"][4]
+            st.info(
+                f"**M9 endurance layer ON.** Munitions p_a={ci['p_a']:.2f} "
+                f"(cost-exchange {ci['munitions'].get('cost_exchange_ratio', 0):.1f}:1) "
+                f"→ S4 gate; spread p_c={ci['p_c']:.2f} → S3 pump. "
+                f"Net vs static prior at 3m: **S3 {s3d:+.0%}, S4 {s4d:+.0%}** — "
+                "the endurance gauges now move P (war widens, all-out tail shrinks).")
     with right:
         st.subheader("Q — market normalization CDF")
         try:

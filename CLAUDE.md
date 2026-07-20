@@ -141,10 +141,20 @@ should *derive* the prior-strength slider.
   so the runway is unreliable — the RATIO is the robust output), and the
   inventory band is a scenario, not intelligence. Upgrade paths: LLM munitions
   sub-coder, think-tank depletion estimates.
-- Next endurance sub-layers (not built): 8b economic endurance (doubles as the
-  EIA fundamentals control), 8d will/casualties. Then wire 8a/8c/8b as
-  transition covariates (§5 hazard layer) and build the Mearsheimer scorecard →
-  dynamic slider (the capstone that DERIVES prior_strength from live evidence).
+- **M9 covariate wiring ✅ (thin slice)** (`src/model/covariates.py`): 8a and 8c
+  now MOVE P. Bounded, conviction-tuned hazard multipliers (NOT a regression
+  fit — pure noise at n=23) on the posterior pseudo-counts: 8a → **S4 gate**
+  (suppress `*→S4`/`S4→S4`, boost `S4→S2/S3`), 8c → **S3 pump** (boost `*→S3`).
+  `run(use_covariates=True)` is the live default; `False` = static baseline.
+  Effect at strength 1: 3m S3 +8pp, S4 −1pp, mean weeks in S2+ 6.5→7.9.
+  Dashboard/brief show the static-vs-adjusted delta. The dashed arrows in the
+  architecture diagram are now solid for 8a/8c.
+- Next: 8b economic endurance (doubles as the EIA fundamentals control; owns the
+  **S5 drift**), 8d will/casualties (**scorecard-primary** — too soft for a P
+  covariate, per Mearsheimer's own materiel>politics caveat), then **M10
+  Mearsheimer scorecard → dynamic slider** — the capstone that DERIVES
+  prior_strength from live evidence (each restriction graded by a layer; fraction
+  confirmed → strength).
 
 ## What accumulates value from here
 Every `make refresh` lands a new dated vintage. A1/A4 backtesting is impossible

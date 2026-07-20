@@ -93,6 +93,19 @@ def section_state() -> list[str]:
         pass
     lines.append(f"- Posterior weight: {reg['data_weight']:.0%} data / "
                  f"{1 - reg['data_weight']:.0%} prior")
+
+    # M9 endurance covariates: show how the munitions/spread layers move P
+    ci = reg.get("covariates") or {}
+    if ci:
+        from src.model.regime_markov import run as _run
+        static = _run(use_covariates=False)
+        s3d = reg["forecasts"]["3m"][3] - static["forecasts"]["3m"][3]
+        s4d = reg["forecasts"]["3m"][4] - static["forecasts"]["3m"][4]
+        lines.append(
+            f"- **Endurance covariates (M9):** munitions p_a={ci['p_a']:.2f} "
+            f"(cost-exchange {ci['munitions'].get('cost_exchange_ratio', 0):.1f}:1), "
+            f"spread p_c={ci['p_c']:.2f} → moves 3m **S3 {s3d:+.0%}, S4 {s4d:+.0%}** "
+            "vs static prior (war widens, all-out tail shrinks)")
     return lines
 
 
