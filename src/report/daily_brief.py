@@ -181,6 +181,17 @@ def section_pq() -> list[str]:
                f"at 12M → {fd['read']}" if fd.get("frac_premium_persisting") is not None else ""))
     except Exception:  # noqa: BLE001
         pass
+    try:
+        from src.features.premia import decompose as _premia
+        pr = _premia()
+        lines.append(
+            f"- **Premium by mechanism:** maritime (Brent−WTI) "
+            f"${pr['maritime_localization']:+.1f}; gas/S3 (TTF−HH) "
+            f"**{pr['gas_war_premium_proxy']:+.0%}** — horizontal risk is priced "
+            f"in European gas, not oil; gold {pr['gold_since_war']:+.0%} since war "
+            f"({'supply-local' if 'supply-local' in pr['gold_regime'] else '⚠ SYSTEMIC WARNING'})")
+    except Exception:  # noqa: BLE001
+        pass
     return lines
 
 

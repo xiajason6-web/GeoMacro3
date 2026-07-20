@@ -43,7 +43,10 @@ code:
 	-$(PY) -m src.coding.llm_coder
 
 # --- derived layers -------------------------------------------------------
-models: predmkt regime events habituation hawkes fingerprint spread munitions economic will scorecard fundamentals
+models: predmkt regime events habituation hawkes fingerprint spread munitions economic will scorecard fundamentals premia
+
+premia:
+	$(PY) -m src.features.premia
 
 fundamentals:
 	$(PY) -m src.features.fundamentals

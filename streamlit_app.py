@@ -126,6 +126,12 @@ def build_lake() -> dict:
         status["fundamentals"] = f"war premium ${fd['war_premium']:+.0f} (R2={fd['prewar_r2']:.2f})"
     except Exception as exc:  # noqa: BLE001
         status["fundamentals"] = f"FAILED: {str(exc)[:50]}"
+    try:
+        from src.features.premia import decompose as _premia
+        wp(pd.DataFrame([_premia()]), "premia")
+        status["premia"] = "ok"
+    except Exception as exc:  # noqa: BLE001
+        status["premia"] = f"FAILED: {str(exc)[:50]}"
     return {"status": status, "as_of": dt.datetime.utcnow().isoformat()}
 
 
@@ -441,6 +447,28 @@ with tab_pq:
                    "for the full supply/demand version.")
     except Exception as exc:  # noqa: BLE001
         st.info(f"fundamentals control unavailable: {exc}")
+
+    st.subheader("Premium by mechanism — which war is priced where")
+    try:
+        pr = read_latest("premia").iloc[-1]
+        g1, g2, g3 = st.columns(3)
+        g1.metric("Maritime localization", f"${pr['maritime_localization']:+.1f}",
+                  f"Brent−WTI {pr['brent_wti_now']:+.1f} vs pre-war {pr['brent_wti_prewar']:+.1f}",
+                  delta_color="off")
+        g2.metric("Gas war premium (S3)", f"{pr['gas_war_premium_proxy']:+.0%}",
+                  f"TTF {pr['ttf_elevation']:+.0%} / HH {pr['hh_elevation']:+.0%}",
+                  delta_color="off")
+        g3.metric("Gold since war", f"{pr['gold_since_war']:+.0%}",
+                  "supply-local" if "supply-local" in str(pr["gold_regime"]) else "⚠ SYSTEMIC",
+                  delta_color="off")
+        st.caption("Brent−WTI = how *chokepoint-specific* the oil premium is. "
+                   "TTF-vs-HenryHub = the **S3 instrument**: horizontal Gulf-infra "
+                   "risk is priced in European gas (+63%), not in oil — refines "
+                   "alpha #2 from 'unpriced' to 'priced only in gas'. Gold falling "
+                   "= market treats the war as an oil event, not systemic; a gold "
+                   "rally with escalation would be the S4-adjacent warning.")
+    except Exception as exc:  # noqa: BLE001
+        st.info(f"premia unavailable: {exc}")
 
 # --------------------------------------------------------------------------- #
 with tab_signals:
