@@ -28,7 +28,7 @@ QUERIES = {
 }
 
 
-def fetch(lookback_days: int = 7) -> pd.DataFrame:
+def fetch(lookback_days: int = 14) -> pd.DataFrame:
     start = today_utc() - dt.timedelta(days=lookback_days)
     rows = []
     for name, q in QUERIES.items():

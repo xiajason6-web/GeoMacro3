@@ -62,7 +62,26 @@ def build_lake() -> dict:
     # coded history: frozen YAML -> lake (no LLM needed)
     from src.coding import load_backfill
     load_backfill.main()
-    status["coded_events"] = "frozen backfill loaded"
+    status["coded_events"] = "frozen backfill"
+
+    # optional live enrichment: only if an API key is present (Streamlit secret
+    # or env). Without it, the cloud shows the hand-verified frozen spine; recent
+    # weeks are then sparse (run `make refresh` locally for full live coding).
+    import os
+    try:
+        if "ANTHROPIC_API_KEY" in st.secrets:
+            os.environ.setdefault("ANTHROPIC_API_KEY", st.secrets["ANTHROPIC_API_KEY"])
+    except Exception:  # noqa: BLE001 — no secrets file is fine
+        pass
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        try:
+            from src.ingest import newsrss
+            from src.coding import llm_coder
+            write_partition(newsrss.fetch(), "gdelt_articles")
+            llm_coder.main()
+            status["coded_events"] = "frozen + live-enriched"
+        except Exception as exc:  # noqa: BLE001
+            status["coded_events"] = f"frozen (live enrich failed: {str(exc)[:40]})"
 
     from src.market_implied.predmkt import build_panel
     from src.common import write_partition as wp
@@ -70,6 +89,12 @@ def build_lake() -> dict:
         wp(build_panel(), "predmkt_panel")
     except Exception:  # noqa: BLE001
         pass
+    from src.features.horizontal_spread import weekly_spread
+    try:
+        wp(weekly_spread(), "horizontal_spread")
+        status["horizontal_spread"] = "ok"
+    except Exception as exc:  # noqa: BLE001
+        status["horizontal_spread"] = f"FAILED: {str(exc)[:60]}"
     return {"status": status, "as_of": dt.datetime.utcnow().isoformat()}
 
 
@@ -183,6 +208,40 @@ with tab_state:
         show.columns = ["week", "state", "7dMA", "% baseline"]
         show["% baseline"] = (show["% baseline"] * 100).round(0).astype(int).astype(str) + "%"
         st.dataframe(show, hide_index=True, height=320)
+
+    st.subheader("Horizontal escalation — the war widening (Mearsheimer's asymmetric options)")
+    sc1, sc2 = st.columns([3, 2])
+    with sc1:
+        try:
+            hs = read_latest("horizontal_spread").copy()
+            hs["week"] = pd.to_datetime(hs["week"])
+            st.bar_chart(hs.set_index("week")[["third_party_fronts", "proxy_active", "broad_hit"]],
+                         height=260)
+            st.caption("Third-party fronts = distinct GCC/Iraq/Yemen/etc. targets "
+                       "struck per week (excludes Iran/Israel/US homelands). This "
+                       "is the S3 axis — the escalation dimension **no market "
+                       "instrument prices** (alpha #2).")
+        except Exception as exc:  # noqa: BLE001
+            st.warning(f"spread index unavailable: {exc}")
+    with sc2:
+        try:
+            from src.features.horizontal_spread import spread_now
+            sp = spread_now()
+            st.metric("Spread index (this week)", sp["spread_index"],
+                      f"trailing-4wk {sp['trailing_4wk_index']:.1f} vs war-avg "
+                      f"{sp['war_avg_index']:.1f}", delta_color="off")
+            st.metric("Fronts this week", sp["third_party_fronts"],
+                      sp["third_party_list"] or "—", delta_color="off")
+            if sp["p_s3_persists_next_week"] is not None:
+                st.metric("S3 recurs next week | S3 now",
+                          f"{sp['p_s3_persists_next_week']:.0%}",
+                          "v2 predicts high (attractor)", delta_color="off")
+            if sp["trailing_4wk_index"] > sp["war_avg_index"] * 1.3:
+                st.warning("**War widening** — recent spread well above the war "
+                           "average. Live confirmation of the horizontal-"
+                           "escalation prior; the scorecard slider ticks up.")
+        except Exception as exc:  # noqa: BLE001
+            st.warning(f"spread reading unavailable: {exc}")
 
     st.subheader("Coded escalation events (frozen backfill + live appends)")
     ev = read_latest("coded_events").copy()

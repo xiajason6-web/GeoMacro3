@@ -114,6 +114,28 @@ that lag must stay visible, not smoothed away.
 - **M7 ✅** `make brief` / `make refresh`. Briefs snapshot to `data/briefs/` and
   diff headline numbers against the prior brief.
 
+## Endurance layer (post-M7, the "fuel gauge")
+The model measures escalation (state, intensity) but Mearsheimer's thesis is
+about *endurance* (can each side sustain). The endurance layer adds that gauge;
+its indicators double as transition covariates AND as the live scorecard that
+should *derive* the prior-strength slider.
+- **8c horizontal-spread index ✅** (`src/features/horizontal_spread.py`,
+  `make spread`): weekly third-party fronts (GCC/Iraq/Yemen targets, maritime
+  excluded), proxy activation, S3 share, and an S3-attractor test
+  (P(S3 recurs next week | S3 now) ≈ 62% — direct support for the v2 prior).
+  Serves three jobs: the S3 alpha tracker (unpriced axis), the first endurance
+  covariate (fronts multiply depletion), and the scorecard's spread input.
+  As of 2026-07-20: trailing-4wk spread ~2× the war average — war re-widening
+  after the June-deal contraction; Jul 13 is the peak week.
+- **Coder merge fix (2026-07-20):** the live coder now ENRICHES the trailing 21
+  days with net-new events (frozen-precedence) instead of dropping everything
+  inside the backfill's final week — recent weeks no longer go dark. Frozen
+  backfill stays the authoritative spine; live never rewrites deep history.
+- Next endurance sub-layers (not built): 8a munitions/interceptor sustainability
+  (the grind-vs-S4-breakout discriminator), 8b economic endurance (doubles as
+  the EIA fundamentals control), 8d will/casualties. Then wire them as
+  transition covariates and build the Mearsheimer scorecard → dynamic slider.
+
 ## What accumulates value from here
 Every `make refresh` lands a new dated vintage. A1/A4 backtesting is impossible
 until a history of daily P and Q vintages exists — the system starts earning

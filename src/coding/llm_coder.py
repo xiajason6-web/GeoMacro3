@@ -151,34 +151,40 @@ def main() -> int:
         out = write_partition(pd.DataFrame(all_events), "coded_events_live_raw")
         print(f"[coder] raw live codings -> {out}")
 
-    # Merge policy: frozen backfill is canonical through its max date; live
-    # events APPEND strictly after it. This is what "the live coder appends,
-    # it never re-codes history" means mechanically — same-window live rows
-    # are duplicates of frozen coverage and are dropped (kept in _live_raw).
+    # Merge policy: the frozen backfill is the AUTHORITATIVE spine (hand-verified,
+    # never re-coded). Live codings ENRICH the trailing OVERLAP_DAYS: they add
+    # net-new events the sparse backfill missed in recent weeks (so the current
+    # week doesn't go dark just because the freeze predates it), but the frozen
+    # row always wins a key collision, and live can never rewrite deep history.
+    # This replaced a strict "> cutoff" append that silently dropped every live
+    # event inside the backfill's final week — blinding the 8c spread index
+    # exactly when the war was most active.
+    OVERLAP_DAYS = 21
     ev_frozen, rh_frozen = _frozen_backfill()
 
     def merge(frozen: pd.DataFrame, live_new: list[dict], source: str,
               dedupe_keys: list[str]) -> pd.DataFrame:
-        cutoff = frozen["date"].max()
-        new = pd.DataFrame(live_new)
-        fresh = new[new["date"].astype(str) > cutoff] if len(new) else new
-        # carry forward live rows appended by PRIOR runs (they age out of the
-        # sliding headline window, so today's codings alone don't cover them)
+        cutoff = pd.Timestamp(frozen["date"].max())
+        window_start = (cutoff - pd.Timedelta(days=OVERLAP_DAYS)).strftime("%Y-%m-%d")
+        today = pd.DataFrame(live_new)
+        # carry forward live rows appended by PRIOR runs (headlines age out of the
+        # sliding window). Prior coded_events = frozen + live, so recover the live
+        # part by coder_version (frozen rows are tagged manual-*).
         try:
             prior = read_latest(source)
-            prior_live = prior[prior["date"].astype(str) > cutoff]
-        except FileNotFoundError:
+            prior_live = prior[~prior["coder_version"].astype(str).str.startswith("manual-")]
+        except (FileNotFoundError, KeyError):
             prior_live = pd.DataFrame()
-        live_all = pd.concat([prior_live, fresh], ignore_index=True)
-        if len(live_all):
-            # coarse dedupe: LLM phrasing varies run-to-run, so exact 'action'
-            # match would miss dupes; may merge distinct same-day same-type
-            # events — acceptable cost, noted.
-            live_all = live_all.drop_duplicates(subset=dedupe_keys, keep="first")
-        merged = pd.concat([frozen, live_all], ignore_index=True)
-        n_dropped = (len(new) - len(fresh)) if len(new) else 0
-        print(f"[coder] {source} = {len(frozen)} frozen + {len(live_all)} live "
-              f"(dropped {n_dropped} overlapping <= {cutoff})")
+        live = pd.concat([prior_live, today], ignore_index=True)
+        if len(live):
+            live = live[live["date"].astype(str) >= window_start]
+            # frozen precedence: drop any live row colliding with a frozen key
+            fk = set(map(tuple, frozen[dedupe_keys].astype(str).values))
+            keep = ~live[dedupe_keys].astype(str).apply(tuple, axis=1).isin(fk)
+            live = live[keep].drop_duplicates(subset=dedupe_keys, keep="first")
+        merged = pd.concat([frozen, live], ignore_index=True).sort_values("date")
+        print(f"[coder] {source} = {len(frozen)} frozen + {len(live)} live "
+              f"(net-new, trailing {OVERLAP_DAYS}d from {window_start}, frozen-precedence)")
         return merged
 
     merged_ev = merge(ev_frozen, all_events, "coded_events",

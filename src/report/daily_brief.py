@@ -58,6 +58,24 @@ def section_state() -> list[str]:
                      f"intensity {hk['intensity_now']:.2f}/day vs {hk['baseline_intensity']:.2f} long-run")
     except FileNotFoundError:
         pass
+
+    try:
+        from src.features.horizontal_spread import spread_now
+        sp = spread_now()
+        widening = sp["trailing_4wk_index"] > sp["war_avg_index"] * 1.3
+        lines.append(
+            f"- **Horizontal spread:** index {sp['spread_index']} this week "
+            f"({sp['third_party_fronts']} third-party fronts: {sp['third_party_list'] or '—'}); "
+            f"trailing-4wk {sp['trailing_4wk_index']:.1f} vs war-avg "
+            f"{sp['war_avg_index']:.1f}"
+            + ("  — **war widening** (Mearsheimer horizontal escalation live)"
+               if widening else "")
+        )
+        if sp["p_s3_persists_next_week"] is not None:
+            lines.append(f"- S3-attractor: P(S3 recurs next week | S3 now) = "
+                         f"{sp['p_s3_persists_next_week']:.0%} — v2 predicts high")
+    except (FileNotFoundError, Exception):  # noqa: BLE001
+        pass
     lines.append(f"- Posterior weight: {reg['data_weight']:.0%} data / "
                  f"{1 - reg['data_weight']:.0%} prior")
     return lines
