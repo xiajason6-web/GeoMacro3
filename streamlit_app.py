@@ -118,6 +118,14 @@ def build_lake() -> dict:
         status["scorecard (M10)"] = f"M={r['M']:.2f} -> strength {r['derived_strength']:.1f}"
     except Exception as exc:  # noqa: BLE001
         status["scorecard (M10)"] = f"FAILED: {str(exc)[:50]}"
+    try:
+        from src.features.fundamentals import decompose
+        fd = decompose()
+        wp(pd.DataFrame([{k: v for k, v in fd.items() if not isinstance(v, dict)}]),
+           "fundamentals")
+        status["fundamentals"] = f"war premium ${fd['war_premium']:+.0f} (R2={fd['prewar_r2']:.2f})"
+    except Exception as exc:  # noqa: BLE001
+        status["fundamentals"] = f"FAILED: {str(exc)[:50]}"
     return {"status": status, "as_of": dt.datetime.utcnow().isoformat()}
 
 
@@ -400,6 +408,26 @@ with tab_pq:
                        "the deal-drop more than escalation.")
         except Exception as exc:  # noqa: BLE001
             st.warning(f"RND unavailable: {exc}")
+
+    st.divider()
+    st.subheader("Fundamentals control — war premium vs soft demand (alpha #1)")
+    try:
+        fd = read_latest("fundamentals").iloc[-1]
+        f1, f2, f3 = st.columns(3)
+        f1.metric("Fundamentals-fair Brent", f"${fd['fundamentals_fair']:.0f}",
+                  "macro+copper model", delta_color="off")
+        f2.metric("War premium", f"${fd['war_premium']:+.0f}",
+                  f"of ${fd['brent_fred']:.0f} spot", delta_color="off")
+        if "frac_premium_persisting" in fd and pd.notna(fd["frac_premium_persisting"]):
+            f3.metric("Premium kept at 12M", f"{fd['frac_premium_persisting']:.0%}",
+                      "curve's persistence pricing", delta_color="off")
+        st.caption(f"Pre-war model R²={fd['prewar_r2']:.2f}. **Alpha #1:** {fd['read']} "
+                   "— this is the confounder-clean version: fundamentals-fair oil is "
+                   "soft (weak copper/demand), so today's Brent is mostly war premium, "
+                   "and the curve already keeps ~half of it at 12M. Needs EIA balances "
+                   "for the full supply/demand version.")
+    except Exception as exc:  # noqa: BLE001
+        st.info(f"fundamentals control unavailable: {exc}")
 
 # --------------------------------------------------------------------------- #
 with tab_signals:

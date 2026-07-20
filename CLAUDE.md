@@ -175,8 +175,19 @@ should *derive* the prior-strength slider.
   weakest restriction. Weights are equal/judgment at n=1 (exposed, not fitted).
 - **Endurance arc COMPLETE:** 8a/8b/8c/8d gauges built; 8a+8b+8c wired into P
   (M9); M10 derives the slider. The "fuel gauge" both moves P and grades the
-  prior. Remaining upgrades (not built): EIA/FRED fundamentals control (cleans
-  alpha #1), LLM munitions sub-coder, per-restriction scorecard weight tuning.
+  prior.
+- **Fundamentals control ✅** (`src/features/fundamentals.py`, `make fundamentals`):
+  separates war premium from soft demand — the confounder-cleaner for alpha #1.
+  Keyless (FRED CSV + yfinance). Regresses Brent on USD + breakeven + real yield
+  + **copper + S&P** over a PRE-WAR window (2024-01..2026-01); the residual is
+  the war premium. **Copper is the key factor** (macro rates alone: R²=0.07;
+  +copper: R²≈0.6–0.7). Current: Brent $82 = fair $55 + **war premium $26**;
+  the curve keeps ~54% of the premium at 12M → **alpha #1 is MILD**, not stark —
+  edge only if your persistence view beats "premium halves in a year." This
+  tempered the earlier confident alpha-#1 claim. Upgrade: EIA supply/demand
+  balances for the full version.
+- Remaining upgrades (not built): EIA/FRED-key fundamentals (fuller balance),
+  LLM munitions sub-coder, per-restriction scorecard weight tuning.
 
 ## What accumulates value from here
 Every `make refresh` lands a new dated vintage. A1/A4 backtesting is impossible

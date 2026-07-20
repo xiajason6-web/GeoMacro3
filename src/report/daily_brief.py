@@ -170,6 +170,17 @@ def section_pq() -> list[str]:
                          f"(\"{dl['question'][:55]}\")")
     except FileNotFoundError:
         pass
+    try:
+        from src.features.fundamentals import decompose
+        fd = decompose()
+        lines.append(
+            f"- **Fundamentals control:** Brent ${fd['brent_fred']:.0f} = "
+            f"fair ${fd['fundamentals_fair']:.0f} + war premium "
+            f"**${fd['war_premium']:+.0f}** (R²={fd['prewar_r2']:.2f}). "
+            + (f"Curve keeps {fd['frac_premium_persisting']:.0%} of the premium "
+               f"at 12M → {fd['read']}" if fd.get("frac_premium_persisting") is not None else ""))
+    except Exception:  # noqa: BLE001
+        pass
     return lines
 
 
