@@ -131,9 +131,22 @@ def build_lake() -> dict:
 
 @st.cache_data(ttl=3600, show_spinner="Running regime model...")
 def regime(prior_strength: float, _lake_key: str) -> dict:
-    from src.model.regime_markov import run
-    r = run(prior_strength, use_covariates=True)          # live: M9 endurance ON
-    static = run(prior_strength, use_covariates=False)    # static-prior baseline
+    # Import + reload: Streamlit reruns this script without restarting the
+    # interpreter, so src modules can go stale after a git pull (seen on Cloud:
+    # "run() got an unexpected keyword argument"). Reload defends against skew.
+    import importlib
+
+    import src.model.regime_markov as rm
+    import inspect
+    if "use_covariates" not in inspect.signature(rm.run).parameters:
+        rm = importlib.reload(rm)
+    run = rm.run
+    if "use_covariates" in inspect.signature(run).parameters:
+        r = run(prior_strength, use_covariates=True)       # live: M9 endurance ON
+        static = run(prior_strength, use_covariates=False) # static-prior baseline
+    else:  # very stale module: degrade gracefully rather than crash
+        r = run(prior_strength)
+        static = r
     return {
         "labels": r["labels"], "p0": r["p0"], "T": r["T"],
         "forecasts": {k: list(map(float, v)) for k, v in r["forecasts"].items()},
