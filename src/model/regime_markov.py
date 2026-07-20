@@ -35,16 +35,23 @@ RNG_SEED = 20260717  # fixed: reproducible runs, vintage discipline
 
 
 def posterior_matrix(
-    labels: pd.DataFrame, prior_strength: float | None = None
+    labels: pd.DataFrame,
+    prior_strength: float | None = None,
+    prior_version: str = "v1",
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Returns (posterior mean T, prior pseudocount matrix, observed count matrix).
     prior_strength overrides config when given (the dashboard's Mearsheimer knob:
-    0 = data only, 1 = priors as written, >1 = prior-dominated)."""
+    0 = data only, 1 = priors as written, >1 = prior-dominated).
+    prior_version selects the thesis vintage: "v1" = Bombing to Lose (vertical
+    ladder, sticky S4); "v2" = horizontal escalation (S3 attractor, S4 decays)."""
     priors_cfg = load_config("priors")
     strength = (float(priors_cfg.get("prior_strength", 1.0))
                 if prior_strength is None else float(prior_strength))
+    key = "transition_dirichlet" if prior_version == "v1" else f"transition_dirichlet_{prior_version}"
+    if key not in priors_cfg:
+        raise KeyError(f"unknown prior_version {prior_version!r} (no {key} in priors.yaml)")
     prior = np.array(
-        [priors_cfg["transition_dirichlet"][s] for s in STATES], dtype=float
+        [priors_cfg[key][s] for s in STATES], dtype=float
     ) * strength
 
     pcols = [f"p_{s}" for s in STATES]
@@ -100,9 +107,9 @@ def touch_probabilities(T: np.ndarray, p0: np.ndarray, max_weeks: int = 52) -> d
     }
 
 
-def run(prior_strength: float | None = None) -> dict:
+def run(prior_strength: float | None = None, prior_version: str = "v1") -> dict:
     labels = label_weeks()
-    T, prior, counts = posterior_matrix(labels, prior_strength)
+    T, prior, counts = posterior_matrix(labels, prior_strength, prior_version)
     p0 = labels[[f"p_{s}" for s in STATES]].iloc[-1].values.astype(float)
     p0 = p0 / p0.sum()
 

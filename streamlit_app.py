@@ -74,9 +74,9 @@ def build_lake() -> dict:
 
 
 @st.cache_data(ttl=3600, show_spinner="Running regime model...")
-def regime(prior_strength: float, _lake_key: str) -> dict:
+def regime(prior_strength: float, prior_version: str, _lake_key: str) -> dict:
     from src.model.regime_markov import run
-    r = run(prior_strength)
+    r = run(prior_strength, prior_version)
     return {
         "labels": r["labels"], "p0": r["p0"], "T": r["T"],
         "forecasts": {k: list(map(float, v)) for k, v in r["forecasts"].items()},
@@ -95,11 +95,25 @@ with st.sidebar:
     st.caption("P (OSINT regime model) vs Q (market-implied) on the US–Iran "
                "war, expressed through oil. **Research framework — not "
                "financial advice.**")
+    prior_version = st.radio(
+        "Mearsheimer thesis vintage",
+        ["v1", "v2"],
+        format_func=lambda v: {
+            "v1": "v1 — Bombing to Lose (vertical ladder, sticky S4)",
+            "v2": "v2 — Horizontal escalation (S3 attractor, S4 decays)",
+        }[v],
+        help="v1 encodes the Feb–Mar argument. v2 encodes the July update: the "
+             "war WIDENS (Gulf infra, basing) rather than climbs; the US lacks "
+             "escalation dominance and munitions depth, so all-out war is "
+             "unsustainable and decays back to the grinding horizontal war. "
+             "Both are frozen in priors.yaml — A/B them.")
     prior_strength = st.slider(
-        "Mearsheimer prior strength", 0.0, 3.0, 1.0, 0.25,
-        help="0 = let the ~20 weeks of data speak alone; 1 = priors as written "
-             "in priors.yaml; 3 = prior-dominated. The point is disciplined "
-             "disagreement — watch how P moves.")
+        "Prior strength", 0.0, 3.0, 1.0, 0.25,
+        help="0 = let the ~20 weeks of data speak alone (49 weekly transitions "
+             "would be pure-empirical; several rows go degenerate); 0.26 = "
+             "50/50 data-prior crossover; 1 = priors as written; 3 = "
+             "prior-dominated. A conclusion that only appears at high strength "
+             "is prior-driven — distrust it.")
     st.divider()
     st.caption("**Data status** (cached 1h)")
     for k, v in lake["status"].items():
@@ -109,7 +123,7 @@ with st.sidebar:
         build_lake.clear()
         st.rerun()
 
-reg = regime(prior_strength, lake_key)
+reg = regime(prior_strength, prior_version, lake_key)
 labels = reg["labels"]
 cur = labels.iloc[-1]
 
@@ -195,8 +209,9 @@ with tab_pq:
         fdf = pd.DataFrame(rows).pivot(index="state", columns="horizon", values="prob")
         fdf = fdf[["2w", "1m", "3m", "6m"]]
         st.dataframe(fdf.style.format("{:.0%}"), height=260)
-        st.caption(f"Posterior = {reg['data_weight']:.0%} data / "
-                   f"{1-reg['data_weight']:.0%} prior at slider={prior_strength}. "
+        st.caption(f"Priors **{prior_version}**, posterior = "
+                   f"{reg['data_weight']:.0%} data / "
+                   f"{1-reg['data_weight']:.0%} prior at strength={prior_strength}. "
                    f"Median weeks to S5 when reached: "
                    f"{reg['touch']['median_weeks_to_s5']:.0f}.")
     with right:
