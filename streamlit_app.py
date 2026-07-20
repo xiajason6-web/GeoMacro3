@@ -109,6 +109,15 @@ def build_lake() -> dict:
         status["economic (8b)"] = f"p_b={e['economic_pressure']:.2f}"
     except Exception as exc:  # noqa: BLE001
         status["economic (8b)"] = f"FAILED: {str(exc)[:50]}"
+    try:
+        from src.model.scorecard import compute as _sc
+        r = _sc()
+        wp(pd.DataFrame([{**{k: v["score"] for k, v in r["sub_scores"].items()},
+                          "M": r["M"], "derived_strength": r["derived_strength"]}]),
+           "mearsheimer_scorecard")
+        status["scorecard (M10)"] = f"M={r['M']:.2f} -> strength {r['derived_strength']:.1f}"
+    except Exception as exc:  # noqa: BLE001
+        status["scorecard (M10)"] = f"FAILED: {str(exc)[:50]}"
     return {"status": status, "as_of": dt.datetime.utcnow().isoformat()}
 
 
@@ -126,6 +135,15 @@ def regime(prior_strength: float, _lake_key: str) -> dict:
     }
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def scorecard_derived(_lake_key: str) -> dict:
+    from src.model.scorecard import compute
+    r = compute()
+    return {"strength": r["derived_strength"], "M": r["M"],
+            "sub_scores": {k: v["score"] for k, v in r["sub_scores"].items()},
+            "details": {k: v["detail"] for k, v in r["sub_scores"].items()}}
+
+
 lake = build_lake()
 lake_key = lake["as_of"]
 
@@ -141,13 +159,21 @@ with st.sidebar:
                "war widens (Gulf infrastructure, basing) rather than climbs; "
                "no US escalation dominance, so all-out war is unsustainable and "
                "decays back to the grind. S3 is the attractor.")
-    prior_strength = st.slider(
-        "Prior strength", 0.0, 3.0, 1.0, 0.25,
-        help="0 = let the ~20 weeks of data speak alone (several transition "
-             "rows go degenerate at n this small); 0.26 = 50/50 data-prior "
-             "crossover; 1 = prior as written; 3 = prior-dominated. A "
-             "conclusion that only appears at high strength is prior-driven — "
-             "distrust it.")
+    derived = scorecard_derived(lake_key)
+    auto = st.toggle(
+        f"Auto (M10 scorecard → {derived['strength']:.1f})", value=True,
+        help="Derive prior strength from the live Mearsheimer scorecard: each of "
+             "his restrictions is graded by an endurance layer, and the fraction "
+             "confirmed sets the slider. Off = set it manually.")
+    manual_strength = st.slider(
+        "Prior strength", 0.0, 4.0, 1.0, 0.25, disabled=auto,
+        help="0 = let the ~20 weeks of data speak alone (rows go degenerate at "
+             "n this small); 0.26 = 50/50 crossover; ~3 = current scorecard; "
+             "4 = empirical-Bayes ceiling. A conclusion only visible at high "
+             "strength is prior-driven — distrust it.")
+    prior_strength = derived["strength"] if auto else manual_strength
+    st.caption(f"→ prior_strength = **{prior_strength:.2f}** "
+               f"({'scorecard-derived' if auto else 'manual'})")
     st.divider()
     st.caption("**Data status** (cached 1h)")
     for k, v in lake["status"].items():
@@ -196,8 +222,9 @@ except Exception:  # noqa: BLE001
 c5.metric("P(touch S4 before S5)", f"{reg['touch']['p_touch_s4_before_s5']:.0%}",
           f"{reg['data_weight']:.0%} data-weighted", delta_color="off")
 
-tab_state, tab_pq, tab_signals, tab_stress, tab_about = st.tabs(
-    ["📊 State & transits", "⚖️ P vs Q", "🚨 Signals", "🕊️ Peace-shock stress", "📖 About"])
+tab_state, tab_pq, tab_score, tab_signals, tab_stress, tab_about = st.tabs(
+    ["📊 State & transits", "⚖️ P vs Q", "🎯 Mearsheimer scorecard",
+     "🚨 Signals", "🕊️ Peace-shock stress", "📖 About"])
 
 # --------------------------------------------------------------------------- #
 with tab_state:
@@ -393,6 +420,41 @@ with tab_signals:
                "(walk-forward + ±50% perturbation): A3 SURVIVES (94% of grid "
                "positive), A6 SURVIVES (100%, n=5 — tiny). Survival earns "
                "monitoring, not capital.")
+
+# --------------------------------------------------------------------------- #
+with tab_score:
+    st.subheader("Is the war behaving as Mearsheimer predicts?")
+    st.caption("Each of his testable restrictions is graded by an endurance "
+               "layer; the fraction confirmed (M) **derives the prior-strength "
+               "slider**. The prior can't overstay — if the war deviates (a deal "
+               "holds, the US gains dominance), the relevant score falls and the "
+               "slider auto-lowers.")
+    sc = scorecard_derived(lake_key)
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Mearsheimer-fit M", f"{sc['M']:.0%}", "war is this Mearsheimer-shaped",
+              delta_color="off")
+    m2.metric("Derived prior strength", f"{sc['strength']:.2f}",
+              "feeds the slider (auto mode)", delta_color="off")
+    dw = 23.0 / (23.0 + sc["strength"] * 88.0)
+    m3.metric("Implied posterior", f"{dw:.0%} data / {1-dw:.0%} prior",
+              delta_color="off")
+    st.divider()
+    LABELS = {
+        "no_coercive_leverage": "No coercive leverage",
+        "deals_decay": "Deals decay (fat-tailed duration)",
+        "asymmetric_escalation": "Asymmetric / horizontal escalation",
+        "face_lock": "Face-lock (domestic-loss aversion)",
+        "endurance_asymmetry": "Endurance asymmetry (Iran outlasts US)",
+    }
+    for k, label in LABELS.items():
+        s = sc["sub_scores"].get(k, 0.5)
+        st.markdown(f"**{label}** — {s:.2f}")
+        st.progress(min(1.0, s))
+        st.caption(sc["details"].get(k, ""))
+    st.info("Weights are equal by default and a judgment call at n=1 — this "
+            "derives a *defensible* strength, not a precise one. It currently "
+            "lands near the empirical-Bayes ceiling (4.0): the data itself "
+            "prefers the prior shape, so buying Mearsheimer and the likelihood agree.")
 
 # --------------------------------------------------------------------------- #
 with tab_stress:

@@ -158,11 +158,25 @@ should *derive* the prior-strength slider.
   war widens with nothing pushing back, Mearsheimer's endurance asymmetry
   quantified. FREE-DATA PROXY: does NOT yet separate war premium from soft demand
   (the fundamentals-control upgrade needs EIA balances + FRED keys).
-- Next: 8d will/casualties (**scorecard-primary** — too soft for a P covariate,
-  per Mearsheimer's materiel>politics caveat), then **M10 Mearsheimer scorecard →
-  dynamic slider** — the capstone that DERIVES prior_strength from live evidence
-  (each restriction graded by a layer; fraction confirmed → strength). M9 now
-  wires 8a+8c+8b; the endurance "fuel gauge" moves P.
+- **8d will/casualties ✅** (`src/features/will.py`, `make will`): SCORECARD-ONLY
+  (softest layer — NOT a P covariate, per Mearsheimer's materiel>politics caveat).
+  Face-lock score from: both sides striking + no durable deal + US will not
+  softening. Currently 0.80.
+- **M10 Mearsheimer scorecard ✅ (the capstone)** (`src/model/scorecard.py`,
+  `make scorecard`): grades all five restrictions from the endurance layers
+  (no-coercive-leverage, deals-decay, asymmetric-escalation via 8a/8c, face-lock
+  via 8d, endurance-asymmetry via 8a/8b), aggregates to a Mearsheimer-fit
+  **M ∈ [0,1]**, and DERIVES `prior_strength = 0.26 + M·(4−0.26)`. Current:
+  **M=0.74 → strength 3.0** (8% data / 92% prior) — the war is ~74% thesis-shaped,
+  landing near the empirical-Bayes ceiling. The slider now self-derives from live
+  evidence and degrades gracefully (a durable deal would drop deals_decay +
+  face_lock → M falls → prior stops dominating). Dashboard: **Auto toggle** snaps
+  the slider to the derived strength + a 🎯 scorecard tab; brief reports M +
+  weakest restriction. Weights are equal/judgment at n=1 (exposed, not fitted).
+- **Endurance arc COMPLETE:** 8a/8b/8c/8d gauges built; 8a+8b+8c wired into P
+  (M9); M10 derives the slider. The "fuel gauge" both moves P and grades the
+  prior. Remaining upgrades (not built): EIA/FRED fundamentals control (cleans
+  alpha #1), LLM munitions sub-coder, per-restriction scorecard weight tuning.
 
 ## What accumulates value from here
 Every `make refresh` lands a new dated vintage. A1/A4 backtesting is impossible

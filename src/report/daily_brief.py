@@ -93,6 +93,17 @@ def section_state() -> list[str]:
         pass
     lines.append(f"- Posterior weight: {reg['data_weight']:.0%} data / "
                  f"{1 - reg['data_weight']:.0%} prior")
+    try:
+        from src.model.scorecard import compute as _sc
+        sc = _sc()
+        weak = min(sc["sub_scores"].items(), key=lambda kv: kv[1]["score"])
+        lines.append(
+            f"- **Mearsheimer scorecard (M10):** M={sc['M']:.0%} → derived "
+            f"prior_strength **{sc['derived_strength']:.1f}**; war is "
+            f"~{sc['M']:.0%} thesis-shaped. Weakest restriction: {weak[0]} "
+            f"({weak[1]['score']:.2f}) — watch it for the prior breaking down.")
+    except Exception:  # noqa: BLE001
+        pass
 
     # M9 endurance covariates: show how the munitions/spread layers move P
     ci = reg.get("covariates") or {}
