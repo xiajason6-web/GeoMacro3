@@ -1,0 +1,53 @@
+# Munitions cost catalog (endurance layer 8a). Illustrative, PUBLIC
+# order-of-magnitude estimates in USD — NOT procurement figures. The load-bearing
+# output is the cost-exchange RATIO (cheap offense vs expensive defense =
+# Mearsheimer's asymmetric-escalation thesis), which is robust to the exact
+# numbers; treat absolute dollars as approximate throughout.
+
+catalog:
+  drone:               {cost: 50000,     role: offensive, side: IRAN}
+  ballistic_missile:   {cost: 1500000,   role: offensive, side: IRAN}
+  cruise_missile:      {cost: 1000000,   role: offensive, side: ANY}
+  pgm_strike:          {cost: 250000,    role: offensive, side: WEST}
+  bunker_buster:       {cost: 3500000,   role: offensive, side: WEST}
+  tomahawk:            {cost: 2000000,   role: offensive, side: WEST}
+  bomber_sortie:       {cost: 1000000,   role: offensive, side: WEST}
+  interceptor_sm3:     {cost: 20000000,  role: defensive, side: WEST}
+  interceptor_thaad:   {cost: 12000000,  role: defensive, side: WEST}
+  interceptor_patriot: {cost: 4000000,   role: defensive, side: WEST}
+  interceptor_arrow:   {cost: 3000000,   role: defensive, side: WEST}
+  interceptor_generic: {cost: 8000000,   role: defensive, side: WEST}
+
+# keyword -> category. Processed in THIS order (specific before generic); each
+# matched phrase is masked so "cruise missile" doesn't also fire generic "missile".
+keywords:
+  - ["shahed",          drone]
+  - ["one-way attack drone", drone]
+  - ["drone",           drone]
+  - ["uav",             drone]
+  - ["bunker-buster",   bunker_buster]
+  - ["bunker buster",   bunker_buster]
+  - ["gbu-57",          bunker_buster]
+  - ["tomahawk",        tomahawk]
+  - ["cruise missile",  cruise_missile]
+  - ["ballistic missile", ballistic_missile]
+  - ["sm-3",            interceptor_sm3]
+  - ["thaad",           interceptor_thaad]
+  - ["pac-3",           interceptor_patriot]
+  - ["patriot",         interceptor_patriot]
+  - ["arrow interceptor", interceptor_arrow]
+  - ["intercepted",     interceptor_generic]
+  - ["interception",    interceptor_generic]
+  - ["b-2",             bomber_sortie]
+  - ["b-52",            bomber_sortie]
+  - ["b-1",             bomber_sortie]
+  - ["airstrike",       pgm_strike]
+  - ["missile",         ballistic_missile]   # generic fallback
+  - ["strikes",         pgm_strike]
+  - ["strike",          pgm_strike]
+
+# Order-of-magnitude regional interceptor availability. WIDE uncertainty band —
+# a scenario tool, NOT an intelligence estimate. Runway = inventory / recent burn.
+interceptor_inventory:
+  low: 150
+  high: 500

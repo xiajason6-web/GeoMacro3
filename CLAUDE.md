@@ -131,10 +131,20 @@ should *derive* the prior-strength slider.
   days with net-new events (frozen-precedence) instead of dropping everything
   inside the backfill's final week — recent weeks no longer go dark. Frozen
   backfill stays the authoritative spine; live never rewrites deep history.
-- Next endurance sub-layers (not built): 8a munitions/interceptor sustainability
-  (the grind-vs-S4-breakout discriminator), 8b economic endurance (doubles as
-  the EIA fundamentals control), 8d will/casualties. Then wire them as
-  transition covariates and build the Mearsheimer scorecard → dynamic slider.
+- **8a munitions/interceptor sustainability ✅** (`src/features/munitions.py`,
+  `config/munitions.yaml`, `make munitions`): rule-based extractor over coded
+  event TEXT → munitions ledger → **cost-exchange ratio** (defender $ to
+  intercept per $1 of Iranian offense, currently ~6.6:1 — Mearsheimer's
+  asymmetric escalation as a dollar figure) + a scenario **interceptor runway**
+  (grind-vs-S4-breakout discriminator). Honest v1 limits: it's a FLOOR (only
+  counts munitions the summaries mention; recent salvo counts are undercounted,
+  so the runway is unreliable — the RATIO is the robust output), and the
+  inventory band is a scenario, not intelligence. Upgrade paths: LLM munitions
+  sub-coder, think-tank depletion estimates.
+- Next endurance sub-layers (not built): 8b economic endurance (doubles as the
+  EIA fundamentals control), 8d will/casualties. Then wire 8a/8c/8b as
+  transition covariates (§5 hazard layer) and build the Mearsheimer scorecard →
+  dynamic slider (the capstone that DERIVES prior_strength from live evidence).
 
 ## What accumulates value from here
 Every `make refresh` lands a new dated vintage. A1/A4 backtesting is impossible

@@ -95,6 +95,14 @@ def build_lake() -> dict:
         status["horizontal_spread"] = "ok"
     except Exception as exc:  # noqa: BLE001
         status["horizontal_spread"] = f"FAILED: {str(exc)[:60]}"
+    from src.features import munitions as _mun
+    try:
+        led = _mun.build_ledger()
+        wp(_mun.weekly(led), "munitions_weekly")
+        wp(led, "munitions_ledger")
+        status["munitions"] = "ok"
+    except Exception as exc:  # noqa: BLE001
+        status["munitions"] = f"FAILED: {str(exc)[:60]}"
     return {"status": status, "as_of": dt.datetime.utcnow().isoformat()}
 
 
@@ -242,6 +250,32 @@ with tab_state:
                            "escalation prior; the scorecard slider ticks up.")
         except Exception as exc:  # noqa: BLE001
             st.warning(f"spread reading unavailable: {exc}")
+
+    st.subheader("Munitions endurance — Mearsheimer's 'no escalation dominance', quantified")
+    try:
+        from src.features.munitions import build_ledger, weekly as mun_weekly, sustainability
+        _led = build_ledger()
+        _w = mun_weekly(_led)
+        _s = sustainability(_led, _w)
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Cost-exchange ratio", f"{_s['cost_exchange_ratio']:.1f} : 1",
+                  "defender $ per $1 Iranian offense", delta_color="off")
+        rlo, rhi = _s["interceptor_runway_weeks_lo"], _s["interceptor_runway_weeks_hi"]
+        m2.metric("Interceptor runway (scenario)",
+                  f"{rlo:.0f}–{rhi:.0f} wk" if rlo else "n/a",
+                  "wide band; recent counts undercounted", delta_color="off")
+        m3.metric("S4 breakout depletion-constrained?",
+                  "yes" if _s["s4_breakout_constrained"] else "not yet binding",
+                  delta_color="off")
+        st.caption("The exchange ratio is the robust number: Iran attacks cheaply "
+                   "(missiles/drones), allies defend expensively (SM-3/THAAD) — his "
+                   "asymmetric-escalation thesis as a dollar figure. When the "
+                   "runway shortens, vertical (S4) escalation becomes unsustainable "
+                   "and the war caps at the horizontal S3 grind. **Rule-based floor "
+                   "from event text — real expenditure is higher; inventory is a "
+                   "scenario, not intelligence.**")
+    except Exception as exc:  # noqa: BLE001
+        st.warning(f"munitions layer unavailable: {exc}")
 
     st.subheader("Coded escalation events (frozen backfill + live appends)")
     ev = read_latest("coded_events").copy()

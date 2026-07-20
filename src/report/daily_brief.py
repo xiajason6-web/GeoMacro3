@@ -76,6 +76,21 @@ def section_state() -> list[str]:
                          f"{sp['p_s3_persists_next_week']:.0%} — v2 predicts high")
     except (FileNotFoundError, Exception):  # noqa: BLE001
         pass
+
+    try:
+        from src.features.munitions import build_ledger, weekly as mun_weekly, sustainability
+        _led = build_ledger()
+        _s = sustainability(_led, mun_weekly(_led))
+        rlo, rhi = _s["interceptor_runway_weeks_lo"], _s["interceptor_runway_weeks_hi"]
+        lines.append(
+            f"- **Munitions endurance:** cost-exchange **{_s['cost_exchange_ratio']:.1f}:1** "
+            f"against the US/allies (Mearsheimer asymmetric escalation); interceptor "
+            f"runway {rlo:.0f}–{rhi:.0f}wk (scenario)"
+            + ("; **S4 breakout depletion-constrained → S3 grind favored**"
+               if _s["s4_breakout_constrained"] else "; depletion not yet binding")
+        )
+    except (FileNotFoundError, Exception):  # noqa: BLE001
+        pass
     lines.append(f"- Posterior weight: {reg['data_weight']:.0%} data / "
                  f"{1 - reg['data_weight']:.0%} prior")
     return lines
