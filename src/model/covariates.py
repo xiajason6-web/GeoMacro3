@@ -35,20 +35,37 @@ S5_DRIFT = 0.4         # *->S5 multiplied by up to (1 + 0.4) = 1.40 — delibera
 
 def munitions_pressure() -> dict:
     """p_a in [0,1]: how much munitions/interceptor depletion constrains vertical
-    escalation. Combines an unfavorable cost-exchange ratio with a short runway."""
+    (S4) escalation.
+
+    Weighting is now RESEARCH-GROUNDED (see config/munitions.yaml sources). The
+    defense literature (MWI West Point) argues the cost-exchange RATIO is the
+    WRONG primary metric; what binds is production rate + magazine depth. So:
+      - production asymmetry (Iran out-produces interceptors ~15:1, ~35mo lead
+        => no wartime replenishment) is the PRIMARY, structural driver (0.55).
+      - magazine runway (depth / burn) is the dynamic secondary (0.30).
+      - cost-exchange ratio is illustrative only (0.15); its "alarming" anchor is
+        ~10:1 (the Apr-2024 Iran-Israel real exchange), not a made-up 3:1.
+    """
     try:
         from src.features.munitions import build_ledger, sustainability, weekly
         led = build_ledger()
         s = sustainability(led, weekly(led))
     except Exception as exc:  # noqa: BLE001 — no munitions data => no pressure
         return {"p_a": 0.0, "note": f"unavailable: {str(exc)[:40]}"}
-    ratio = s.get("cost_exchange_ratio") or 0.0
+
+    gap = s.get("production_gap") or 1.0
+    # structural: production gap >1 with no wartime replenishment => S4 is a
+    # one-way depletion. gap 1->0, 15->~0.7, capped.
+    struct_p = float(np.clip((gap - 1.0) / 20.0, 0, 1)) if not s.get(
+        "wartime_replenishment_possible", False) else 0.0
     runway_hi = s.get("interceptor_runway_weeks_hi")
-    ratio_p = float(np.clip((ratio - 3.0) / 7.0, 0, 1))       # ratio 3->0, 10->1
     runway_p = float(np.clip((30.0 - (runway_hi if runway_hi else 999)) / 30.0, 0, 1))
-    p_a = float(np.clip(0.5 * ratio_p + 0.5 * runway_p, 0, 1))
-    return {"p_a": p_a, "cost_exchange_ratio": ratio, "runway_hi_weeks": runway_hi,
-            "ratio_component": ratio_p, "runway_component": runway_p}
+    ratio = s.get("cost_exchange_ratio") or 0.0
+    ratio_p = float(np.clip((ratio - 5.0) / 25.0, 0, 1))      # 10:1 alarming -> 0.2
+    p_a = float(np.clip(0.55 * struct_p + 0.30 * runway_p + 0.15 * ratio_p, 0, 1))
+    return {"p_a": p_a, "cost_exchange_ratio": ratio, "production_gap": gap,
+            "runway_hi_weeks": runway_hi, "struct_component": struct_p,
+            "runway_component": runway_p, "ratio_component": ratio_p}
 
 
 def economic_pressure() -> dict:
@@ -118,8 +135,10 @@ def apply(post: np.ndarray) -> tuple[np.ndarray, dict]:
 
 if __name__ == "__main__":
     M, info = multiplier_matrix()
-    print(f"munitions p_a = {info['p_a']:.2f}  (8a: cost-exchange "
-          f"{info['munitions'].get('cost_exchange_ratio', 0):.1f}:1) -> S4 gate")
+    print(f"munitions p_a = {info['p_a']:.2f}  (8a: production gap "
+          f"{info['munitions'].get('production_gap', 0):.0f}:1 [founded], "
+          f"cost-exchange {info['munitions'].get('cost_exchange_ratio', 0):.1f}:1 "
+          f"[illustrative]) -> S4 gate")
     print(f"spread    p_c = {info['p_c']:.2f}  (8c: trailing-4wk "
           f"{info['spread'].get('spread_ratio_vs_war_avg', 0):.1f}x war-avg) -> S3 pump")
     print(f"economic  p_b = {info['p_b']:.2f}  (8b: US-pain "

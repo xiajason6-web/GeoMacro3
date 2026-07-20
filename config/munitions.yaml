@@ -51,3 +51,19 @@ keywords:
 interceptor_inventory:
   low: 150
   high: 500
+
+# PRODUCTION-RATE ASYMMETRY — the FOUNDED sustainability metric. The defense
+# literature argues the cost-exchange RATIO is the wrong primary measure
+# (MWI West Point, "The Indispensable Interceptor: ...the Problem of
+# Cost-Exchange Logic" — explicitly rejects ratio-based thinking). What binds is
+# magazine depth vs. replenishment: you cannot rebuild interceptors faster than
+# they are spent, and Iran out-produces interceptor lines ~15:1.
+#   Iran ballistic-missile output ~100/month; US PAC-3 MSE output ~6-7/month
+#     (FPRI 2026, "Scaling Patriot Production: The Industrial Base Crisis").
+#   PAC-3 MSE lead time ~34-36 months -> effectively NO wartime replenishment.
+#   Cost-exchange context: Apr-2024 Iran-Israel real exchange ~10:1 (~$80-100M
+#     attack vs ~$1B defense; Reuters/Haaretz) = the empirically "alarming" level.
+production:
+  iran_offensive_per_month: 100
+  west_interceptor_per_month: 7
+  interceptor_lead_time_months: 35

@@ -113,12 +113,27 @@ def sustainability(ledger: pd.DataFrame, w: pd.DataFrame) -> dict:
     runway_lo = inv_lo / recent if recent else None
     runway_hi = inv_hi / recent if recent else None
 
+    # PRODUCTION ASYMMETRY — the founded sustainability metric (see munitions.yaml
+    # sources): interceptors can't be rebuilt faster than they're spent. This is a
+    # structural fact, not a noisy event-stream estimate, so it's the reliable
+    # driver of "S4 (max-tempo) is unsustainable" — independent of magazine depth.
+    prod = cfg.get("production", {})
+    iran_pm = prod.get("iran_offensive_per_month", 100)
+    west_pm = prod.get("west_interceptor_per_month", 7)
+    lead = prod.get("interceptor_lead_time_months", 35)
+    production_gap = iran_pm / west_pm if west_pm else None   # ~15:1
+    wartime_replenishment = lead <= 6                          # False: 35mo lead
+
     accel = (recent / war_avg) if war_avg else None
-    # grind-vs-breakout: short runway + high exchange ratio => vertical unsustainable
-    short_runway = runway_hi is not None and runway_hi < 20  # <~5 months even optimistic
-    constrained = bool(short_runway and (ratio or 0) > 3)
+    short_runway = runway_hi is not None and runway_hi < 20    # <~5 months even optimistic
+    # vertical (S4) is constrained when magazines are shallow OR — the structural
+    # case — Iran badly out-produces interceptors and they can't be replaced in war.
+    constrained = bool(short_runway or (production_gap and production_gap > 5 and not wartime_replenishment))
     return {
-        "cost_exchange_ratio": ratio,
+        "cost_exchange_ratio": ratio,                         # illustrative, NOT primary
+        "production_gap": float(production_gap) if production_gap else None,
+        "interceptor_lead_months": lead,
+        "wartime_replenishment_possible": wartime_replenishment,
         "recent_iran_shots_per_wk": float(recent) if recent else 0.0,
         "burn_acceleration_vs_war_avg": float(accel) if accel else None,
         "interceptor_runway_weeks_lo": float(runway_lo) if runway_lo else None,
@@ -142,10 +157,11 @@ def main() -> int:
         n=("count", "sum"), usd=("cost_usd", "sum")).reset_index()
     for _, r in tot.sort_values("usd", ascending=False).head(10).iterrows():
         print(f"    {r['side']:>5} {r['category']:<20} {int(r['n']):>5}  ${r['usd']/1e6:,.0f}M")
-    print(f"\n[munitions] COST-EXCHANGE RATIO = {s['cost_exchange_ratio']:.1f}:1 "
-          "(defender $ to intercept per $1 of Iranian offense)")
-    print(f"[munitions]   -> Mearsheimer asymmetric escalation: the exchange runs "
-          f"{s['cost_exchange_ratio']:.0f}x against the US/allies")
+    print(f"\n[munitions] PRODUCTION GAP = {s['production_gap']:.0f}:1 (Iran out-produces "
+          f"interceptors; ~{s['interceptor_lead_months']}mo lead => no wartime "
+          "replenishment). This is the FOUNDED sustainability metric (MWI/FPRI).")
+    print(f"[munitions] cost-exchange ratio = {s['cost_exchange_ratio']:.1f}:1 "
+          "(illustrative; the literature says the RATIO is the wrong primary metric)")
     print(f"[munitions] recent Iranian shots/wk: {s['recent_iran_shots_per_wk']:.0f} "
           f"(x{s['burn_acceleration_vs_war_avg']:.1f} vs war-avg)"
           if s["burn_acceleration_vs_war_avg"] else "")

@@ -131,6 +131,15 @@ should *derive* the prior-strength slider.
   days with net-new events (frozen-precedence) instead of dropping everything
   inside the backfill's final week — recent weeks no longer go dark. Frozen
   backfill stays the authoritative spine; live never rewrites deep history.
+- **8a re-grounded on PRODUCTION ASYMMETRY (2026-07-20):** research showed the
+  cost-exchange RATIO is the wrong primary sustainability metric (MWI West Point
+  explicitly rejects ratio-based thinking); what binds is production rate +
+  magazine depth. Iran out-produces interceptors ~15:1 (~100 vs ~6-7/month, FPRI)
+  with ~35mo lead → no wartime replenishment. `covariates.munitions_pressure`
+  now weights production-gap 0.55 (primary, structural), magazine runway 0.30,
+  cost-exchange 0.15 (illustrative; its "alarming" anchor is ~10:1 = the Apr-2024
+  Iran-Israel real exchange, NOT the old arbitrary 3:1). p_a 0.26→0.38; the S4
+  gate is now founded, not assumed. Sources cited in config/munitions.yaml.
 - **8a munitions/interceptor sustainability ✅** (`src/features/munitions.py`,
   `config/munitions.yaml`, `make munitions`): rule-based extractor over coded
   event TEXT → munitions ledger → **cost-exchange ratio** (defender $ to

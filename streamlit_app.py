@@ -375,7 +375,7 @@ with tab_pq:
             pb = ci.get("p_b", 0.0)
             st.info(
                 f"**M9 endurance layer ON.** 8a munitions p_a={ci['p_a']:.2f} "
-                f"(cost-exchange {ci['munitions'].get('cost_exchange_ratio', 0):.1f}:1) → S4 gate · "
+                f"(production gap {ci['munitions'].get('production_gap', 0):.0f}:1) → S4 gate · "
                 f"8c spread p_c={ci['p_c']:.2f} → S3 pump · "
                 f"8b economic p_b={pb:.2f} → S5 drift. "
                 f"Net vs static prior at 3m: **S3 {s3d:+.0%}, S4 {s4d:+.0%}, S5 {s5d:+.0%}**. "
