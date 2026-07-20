@@ -101,11 +101,12 @@ def section_state() -> list[str]:
         static = _run(use_covariates=False)
         s3d = reg["forecasts"]["3m"][3] - static["forecasts"]["3m"][3]
         s4d = reg["forecasts"]["3m"][4] - static["forecasts"]["3m"][4]
+        s5d = reg["forecasts"]["3m"][5] - static["forecasts"]["3m"][5]
         lines.append(
-            f"- **Endurance covariates (M9):** munitions p_a={ci['p_a']:.2f} "
-            f"(cost-exchange {ci['munitions'].get('cost_exchange_ratio', 0):.1f}:1), "
-            f"spread p_c={ci['p_c']:.2f} → moves 3m **S3 {s3d:+.0%}, S4 {s4d:+.0%}** "
-            "vs static prior (war widens, all-out tail shrinks)")
+            f"- **Endurance covariates (M9):** 8a p_a={ci['p_a']:.2f} "
+            f"(cost-exchange {ci['munitions'].get('cost_exchange_ratio', 0):.1f}:1) → S4 gate; "
+            f"8c p_c={ci['p_c']:.2f} → S3 pump; 8b p_b={ci.get('p_b', 0):.2f} → S5 drift. "
+            f"Moves 3m **S3 {s3d:+.0%}, S4 {s4d:+.0%}, S5 {s5d:+.0%}** vs static prior")
     return lines
 
 

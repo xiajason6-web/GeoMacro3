@@ -1,0 +1,24 @@
+# 8b economic-endurance parameters. FREE-DATA PROXIES (Brent + PortWatch); the
+# full version needs EIA balances + FRED (US deficit/rates) keys — see economic.py.
+# All buffers/thresholds are SCENARIOS, not intelligence.
+
+# US political-pain-from-oil: Brent $ maps to US pressure-to-deal in [0,1].
+# US pain is a PRICE story (gasoline/inflation, democratic electorate).
+us_oil_pain:
+  low: 100      # below this, negligible political pain
+  high: 150     # at/above, maximal pain (strong deal pressure)
+
+# Iran endurance is a VOLUME story: strait shut => it cannot export => revenue
+# loss burns its fiscal buffer. Sanctions-hardened, so the buffer is large
+# relative to the burn (Mearsheimer's high-tolerance claim, quantified).
+iran_export:
+  baseline_bpd: 1500000            # crude exports pre-disruption (already sanctioned), bpd
+  via_hormuz_frac: 0.90            # share that must transit Hormuz/Kharg
+  fx_reserve_buffer_usd: 25.0e9    # accessible reserves buffer (scenario)
+  pain_horizon_days: 180           # runway shorter than this => rising Iran pain
+
+# Combined economic pressure -> S5 (de-escalation) drift. Bounded and small:
+# the prior's face-lock keeps deals unstable even under economic strain (which
+# is exactly why April/June deals happened AND decayed).
+combined:
+  s5_drift_coef: 0.4

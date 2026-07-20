@@ -28,6 +28,9 @@ STATES = ["S0", "S1", "S2", "S3", "S4", "S5"]
 S4_SUPPRESS = 0.6      # *->S4 and S4->S4 multiplied by up to (1 - 0.6) = 0.40
 S4_DECAY_BOOST = 0.8   # S4->S2/S3 multiplied by up to (1 + 0.8) = 1.80
 S3_PUMP = 0.7          # S1/S2/S3->S3 multiplied by up to (1 + 0.7) = 1.70
+S5_DRIFT = 0.4         # *->S5 multiplied by up to (1 + 0.4) = 1.40 — deliberately
+#                        small: face-lock (prior) keeps deals unstable even under
+#                        economic strain, so 8b only NUDGES the deal drift.
 
 
 def munitions_pressure() -> dict:
@@ -48,6 +51,20 @@ def munitions_pressure() -> dict:
             "ratio_component": ratio_p, "runway_component": runway_p}
 
 
+def economic_pressure() -> dict:
+    """p_b in [0,1]: combined economic strain pushing toward de-escalation (US
+    oil-price pain + Iran fiscal-runway pain). Low now (cheap-ish oil, long Iran
+    runway) => near-zero S5 drift, which is why deals aren't imminent."""
+    try:
+        from src.features.economic import readings
+        r = readings()
+    except Exception as exc:  # noqa: BLE001
+        return {"p_b": 0.0, "note": f"unavailable: {str(exc)[:40]}"}
+    return {"p_b": r["economic_pressure"], "us_oil_pain": r["us_oil_pain"],
+            "iran_pain": r["iran_pain"], "iran_runway_days": r["iran_runway_days"],
+            "closer_to_cracking": r["closer_to_cracking"]}
+
+
 def spread_pressure() -> dict:
     """p_c in [0,1]: how much the war is widening horizontally right now,
     from the 8c trailing-4wk spread index vs the war average."""
@@ -65,8 +82,8 @@ def spread_pressure() -> dict:
 
 def multiplier_matrix() -> tuple[np.ndarray, dict]:
     """The 6x6 cell multipliers implied by the current 8a/8c readings."""
-    a, c = munitions_pressure(), spread_pressure()
-    pa, pc = a["p_a"], c["p_c"]
+    a, c, e = munitions_pressure(), spread_pressure(), economic_pressure()
+    pa, pc, pb = a["p_a"], c["p_c"], e["p_b"]
     M = np.ones((6, 6))
 
     # --- 8a: S4 gate (index 4) ---
@@ -82,7 +99,13 @@ def multiplier_matrix() -> tuple[np.ndarray, dict]:
     for r in (1, 2, 3):
         M[r, 3] *= m_s3             # widening -> more mass into/within S3
 
-    return M, {"munitions": a, "spread": c, "p_a": pa, "p_c": pc}
+    # --- 8b: S5 drift (index 5) ---
+    m_s5 = 1.0 + S5_DRIFT * pb
+    for r in (0, 1, 2, 3):
+        M[r, 5] *= m_s5            # economic strain nudges toward a deal
+
+    return M, {"munitions": a, "spread": c, "economic": e,
+               "p_a": pa, "p_c": pc, "p_b": pb}
 
 
 def apply(post: np.ndarray) -> tuple[np.ndarray, dict]:
@@ -95,11 +118,13 @@ def apply(post: np.ndarray) -> tuple[np.ndarray, dict]:
 
 if __name__ == "__main__":
     M, info = multiplier_matrix()
-    print(f"munitions pressure p_a = {info['p_a']:.2f}  "
-          f"(cost-exchange {info['munitions'].get('cost_exchange_ratio', 0):.1f}:1, "
-          f"runway_hi {info['munitions'].get('runway_hi_weeks')}w)")
-    print(f"spread pressure   p_c = {info['p_c']:.2f}  "
-          f"(trailing-4wk {info['spread'].get('spread_ratio_vs_war_avg', 0):.1f}x war-avg)")
+    print(f"munitions p_a = {info['p_a']:.2f}  (8a: cost-exchange "
+          f"{info['munitions'].get('cost_exchange_ratio', 0):.1f}:1) -> S4 gate")
+    print(f"spread    p_c = {info['p_c']:.2f}  (8c: trailing-4wk "
+          f"{info['spread'].get('spread_ratio_vs_war_avg', 0):.1f}x war-avg) -> S3 pump")
+    print(f"economic  p_b = {info['p_b']:.2f}  (8b: US-pain "
+          f"{info['economic'].get('us_oil_pain', 0):.2f}, Iran-pain "
+          f"{info['economic'].get('iran_pain', 0):.2f}) -> S5 drift")
     print("\nnon-trivial cell multipliers (row->col : x):")
     for i in range(6):
         for j in range(6):

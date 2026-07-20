@@ -43,7 +43,10 @@ code:
 	-$(PY) -m src.coding.llm_coder
 
 # --- derived layers -------------------------------------------------------
-models: predmkt regime events habituation hawkes fingerprint spread munitions
+models: predmkt regime events habituation hawkes fingerprint spread munitions economic
+
+economic:
+	$(PY) -m src.features.economic
 
 spread:
 	$(PY) -m src.features.horizontal_spread

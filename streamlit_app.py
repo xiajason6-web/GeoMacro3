@@ -103,6 +103,12 @@ def build_lake() -> dict:
         status["munitions"] = "ok"
     except Exception as exc:  # noqa: BLE001
         status["munitions"] = f"FAILED: {str(exc)[:60]}"
+    try:
+        from src.features.economic import readings as _econ
+        e = _econ()
+        status["economic (8b)"] = f"p_b={e['economic_pressure']:.2f}"
+    except Exception as exc:  # noqa: BLE001
+        status["economic (8b)"] = f"FAILED: {str(exc)[:50]}"
     return {"status": status, "as_of": dt.datetime.utcnow().isoformat()}
 
 
@@ -311,12 +317,17 @@ with tab_pq:
         if ci and "static_forecasts" in reg:
             s3d = reg["forecasts"]["3m"][3] - reg["static_forecasts"]["3m"][3]
             s4d = reg["forecasts"]["3m"][4] - reg["static_forecasts"]["3m"][4]
+            s5d = reg["forecasts"]["3m"][5] - reg["static_forecasts"]["3m"][5]
+            pb = ci.get("p_b", 0.0)
             st.info(
-                f"**M9 endurance layer ON.** Munitions p_a={ci['p_a']:.2f} "
-                f"(cost-exchange {ci['munitions'].get('cost_exchange_ratio', 0):.1f}:1) "
-                f"→ S4 gate; spread p_c={ci['p_c']:.2f} → S3 pump. "
-                f"Net vs static prior at 3m: **S3 {s3d:+.0%}, S4 {s4d:+.0%}** — "
-                "the endurance gauges now move P (war widens, all-out tail shrinks).")
+                f"**M9 endurance layer ON.** 8a munitions p_a={ci['p_a']:.2f} "
+                f"(cost-exchange {ci['munitions'].get('cost_exchange_ratio', 0):.1f}:1) → S4 gate · "
+                f"8c spread p_c={ci['p_c']:.2f} → S3 pump · "
+                f"8b economic p_b={pb:.2f} → S5 drift. "
+                f"Net vs static prior at 3m: **S3 {s3d:+.0%}, S4 {s4d:+.0%}, S5 {s5d:+.0%}**. "
+                + ("Economic pressure ~0 (cheap oil, long Iran runway) → the war "
+                   "widens with no deal pull — Mearsheimer's endurance asymmetry."
+                   if pb < 0.05 else "Economic strain is building the deal drift."))
     with right:
         st.subheader("Q — market normalization CDF")
         try:

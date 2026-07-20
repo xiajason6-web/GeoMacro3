@@ -149,12 +149,20 @@ should *derive* the prior-strength slider.
   Effect at strength 1: 3m S3 +8pp, S4 −1pp, mean weeks in S2+ 6.5→7.9.
   Dashboard/brief show the static-vs-adjusted delta. The dashed arrows in the
   architecture diagram are now solid for 8a/8c.
-- Next: 8b economic endurance (doubles as the EIA fundamentals control; owns the
-  **S5 drift**), 8d will/casualties (**scorecard-primary** — too soft for a P
-  covariate, per Mearsheimer's own materiel>politics caveat), then **M10
-  Mearsheimer scorecard → dynamic slider** — the capstone that DERIVES
-  prior_strength from live evidence (each restriction graded by a layer; fraction
-  confirmed → strength).
+- **8b economic endurance ✅** (`src/features/economic.py`, `config/economic.yaml`,
+  `make economic`): US oil-pain (Brent vs $100–150 band, a PRICE story) + Iran
+  fiscal runway (PortWatch export-loss vs FX buffer, a VOLUME story). Wired into
+  the **S5-drift** cell (`covariates.py`, coef 0.4 — deliberately small; face-lock
+  keeps deals unstable under strain). Current read: Brent $88 → US-pain 0.00,
+  Iran runway ~268d → Iran-pain 0.00, so **p_b≈0**: no deal pull right now — the
+  war widens with nothing pushing back, Mearsheimer's endurance asymmetry
+  quantified. FREE-DATA PROXY: does NOT yet separate war premium from soft demand
+  (the fundamentals-control upgrade needs EIA balances + FRED keys).
+- Next: 8d will/casualties (**scorecard-primary** — too soft for a P covariate,
+  per Mearsheimer's materiel>politics caveat), then **M10 Mearsheimer scorecard →
+  dynamic slider** — the capstone that DERIVES prior_strength from live evidence
+  (each restriction graded by a layer; fraction confirmed → strength). M9 now
+  wires 8a+8c+8b; the endurance "fuel gauge" moves P.
 
 ## What accumulates value from here
 Every `make refresh` lands a new dated vintage. A1/A4 backtesting is impossible
