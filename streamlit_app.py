@@ -54,14 +54,11 @@ h1, h2, h3, h4, [data-testid="stMetricValue"], [data-testid="stMarkdownContainer
   font-family: Georgia, serif; font-style: italic; color: var(--vermillion);
   opacity: 0.85; font-size: 1.15rem; margin: 0 0 1.1rem 0;
 }
-/* section headings: sage double-stripe motif (the cover's L) */
+/* section headings: clean sage serif, no ornament */
 h3 {
   color: var(--sage) !important; font-weight: 500 !important;
   font-size: 1.25rem !important;
-  border-left: 3px solid var(--sage); padding-left: 14px;
-  box-shadow: inset 8px 0 0 -6px var(--sage);
   margin-top: 1.4rem !important; margin-bottom: 0.4rem !important;
-  padding-top: 0.1rem; padding-bottom: 0.1rem;
 }
 /* metrics: card on raised green, NO ellipsis truncation, serif values */
 [data-testid="stMetric"] {
@@ -293,12 +290,9 @@ st.markdown("""
 h2 {
   color: var(--sage) !important; font-weight: 500 !important;
   font-size: 1.55rem !important;
-  border-left: 3px solid var(--sage); padding-left: 16px;
-  box-shadow: inset 9px 0 0 -6px var(--sage);
   margin-top: 2.4rem !important; margin-bottom: 0.5rem !important;
 }
-h3 { border-left: none; box-shadow: none; padding-left: 0;
-     font-style: italic; font-weight: 400 !important; }
+h3 { font-style: italic; font-weight: 400 !important; }
 .lede { font-size: 1.02rem; line-height: 1.65; color: #D9E7DD; max-width: 62rem; }
 .lede em { color: var(--vermillion); font-style: normal; }
 .keybox { border: 1px solid var(--hairline); background: var(--green-raised);
@@ -374,42 +368,45 @@ except Exception:  # noqa: BLE001
 
 k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("The war persists", f"{p_s2plus:.0%}",
-          "chance still in chokepoint/infra war in 3 months", delta_color="off")
+          "odds the strait is still a war zone in three months", delta_color="off")
 k2.metric("It widens, not climbs", f"{f3[3]:.0%} vs {f3[4]:.0%}",
-          "Gulf-infrastructure war vs all-out war, 3 months", delta_color="off")
+          "odds of a Gulf-wide infrastructure war vs an all-out war",
+          delta_color="off")
 k3.metric("Deals happen — and decay", f"{t.get('p_visit_s5_3m', 0):.0%}",
-          f"chance of a deal episode in 3m; only {f3[5]:.0%} still holding",
+          f"odds of a ceasefire attempt; only {f3[5]:.0%} that one holds",
           delta_color="off")
 if war_prem is not None:
-    k4.metric("War premium in Brent", f"${war_prem:+.0f}",
-              f"curve keeps {kept:.0%} of it at 12 months" if kept else "",
-              delta_color="off")
+    k4.metric("War premium in oil", f"${war_prem:+.0f}",
+              f"per barrel of Brent; {kept:.0%} still priced a year out" if kept
+              else "per barrel of Brent", delta_color="off")
 if mdl_dec is not None and mkt_dec is not None:
-    k5.metric("Reopen by Dec 31", f"P {mdl_dec:.0%} · Q {mkt_dec:.0%}",
-              "model vs market — a live graded call", delta_color="off")
+    k5.metric("Strait reopens by Dec 31", f"P {mdl_dec:.0%} · Q {mkt_dec:.0%}",
+              "this model vs the betting market", delta_color="off")
 
 st.markdown(f"""
 <p class="lede">
-The model's read: <em>this war does not end soon, and it spreads sideways rather
-than up.</em> In three months the most likely world is still a strangled Strait
-of Hormuz with strikes bleeding outward into Gulf infrastructure — not an
-all-out regional war ({f3[4]:.0%}), and not a durable peace ({f3[5]:.0%}).
-Ceasefire <b>episodes</b> are actually likely ({t.get('p_visit_s5_3m', 0):.0%}
-within three months) — but April and June both showed the pattern: deals arrive
-suddenly and decay within weeks, because neither side can absorb the domestic
-cost of staying in one.
+<em>This war does not end soon, and it grows outward, not upward.</em> Three
+months from now, the most likely world still has the Strait of Hormuz closed
+and strikes landing on Gulf infrastructure — Kuwaiti desalination plants, Saudi
+terminals, US bases in Jordan. All-out war stays unlikely ({f3[4]:.0%}), and so
+does lasting peace ({f3[5]:.0%}). A ceasefire attempt is actually
+<b>probable</b> — but the war has already produced two, in April and in June,
+and each collapsed within about three weeks. The model expects that pattern to
+repeat: deals arrive suddenly, and then they die.
 </p>
 <p class="lede">
-<b>Where this differs from the market:</b> the market has already conceded the
-front — near-term reopening odds collapsed weeks ago, so there is no edge in
-simply betting the war continues. The differences that remain are subtler:
-(1) the <b>back of the oil futures curve</b> still prices most of the war
-premium away by next year, while the model sees a longer grind; (2) the
-<b>horizontal axis</b> — strikes on Gulf water, power, and export infrastructure
-— is priced in European gas but invisible in oil instruments; (3) oil options
-pay up for a <b>durable resolution</b> that neither the deal odds nor the
-deal-decay record supports. Each of these is developed below, and the boldest
-disagreements are live, graded calls in the public ledger (§VII).
+<b>Where this view differs from the market's:</b> not on whether the war
+continues — the market gave up on a quick reopening weeks ago, and there is no
+money in agreeing with everyone. The remaining disagreements are three. First,
+oil for delivery <b>next year</b> is priced as if most of the war premium will
+be gone by then; this model expects the grind to outlast that optimism. Second,
+the war's real growth axis — strikes on Gulf <b>water, power, and export
+facilities</b> — barely shows up in oil prices at all; the only market pricing
+it is European natural gas. Third, oil options pay heavily for a <b>peace that
+sticks</b>, which neither the betting markets nor the two dead ceasefires
+support. Each disagreement is developed below, and the boldest ones are
+standing bets in the public ledger (§VII), graded automatically as the dates
+pass.
 </p>
 """, unsafe_allow_html=True)
 
@@ -503,15 +500,30 @@ with st.expander("Recent coded events — the raw material"):
 st.markdown("## III. The endurance argument — why the forecast looks this way")
 st.markdown("""
 <p class="lede">
-The forecast is not a curve-fit; it is a <em>thesis, graded live</em>. John
-Mearsheimer's argument, encoded: airpower alone has never coerced a state
-facing existential stakes; the US cannot sustain a maximum-tempo campaign; Iran
-can hit tankers and Gulf infrastructure cheaply; and neither side can absorb
-the domestic humiliation of backing down. If that argument is right, the war
-<b>grinds and widens</b>. Each claim below is scored against the data — the
-average sets how heavily the thesis weighs on the forecast, and if the war
-stops behaving this way, the scores fall and the model reverts toward the
-historical base rate (most interstate wars end within months).
+The forecast is built on an argument, not a curve-fit. The argument is John
+Mearsheimer's, and in plain terms it runs like this. <b>Bombing does not make
+countries surrender</b> — no state fighting for its survival has ever been
+coerced by airpower alone, and Iran is fighting for its survival while America
+is fighting for leverage, so Iran can absorb pain longer than Washington can
+sustain interest. <b>The bombing cannot be sustained anyway</b>: precision
+munitions and interceptors are being spent far faster than any factory can
+replace them. <b>Iran's counter-moves are cheap</b>: a drone that costs less
+than a car forces a defense that costs more than a house, and tankers,
+pipelines, and desalination plants cannot shoot back. And <b>neither government
+can afford to be seen quitting</b> — every strike is framed as retaliation, so
+ending the war requires one leader to accept a public humiliation that neither
+can survive politically. Put together: a war that cannot be won, cannot be
+sustained at full intensity, is cheapest to fight sideways, and has no
+dignified exit — so it <em>grinds on and spreads outward</em>.
+</p>
+<p class="lede">
+Each of those claims is testable, and the bars below score them against what
+is actually happening. The average sets how heavily the thesis leans on the
+forecast. This cuts both ways: if a ceasefire holds or Iran starts conceding,
+the scores fall and the model drifts back toward the historical base rate —
+which, it should be said plainly, is against this thesis: <b>the median war
+between states ends in under five months</b>. This forecast is a deliberate,
+evidence-graded bet against that average.
 </p>
 """, unsafe_allow_html=True)
 
@@ -564,19 +576,24 @@ except Exception:  # noqa: BLE001
     pass
 st.markdown("""
 <p class="lede">
-<b>Second-order effects</b> follow from these numbers. The production gap
-(~35-month interceptor lead times) means defending the Gulf is a one-way
-drawdown of magazines — so sustained all-out war is not a real option, and
-every week of defense spends stock the US also needs for Pacific deterrence.
-Iran's ~130-day fiscal runway means economic pressure <em>eventually</em>
-forces it toward a deal — but face-lock means the deal doesn't hold, which is
-exactly the April→June→July cycle. <b>Third-order:</b> repeated
-deal-and-collapse cycles teach markets to fade ceasefire headlines (visible in
-oil's muted deal rallies), while depleted interceptors leave Gulf
-infrastructure progressively less defended — making the <em>next</em>
-horizontal strike cheaper and more damaging: water and power for millions in
-Kuwait and Riyadh sit under that umbrella, which is why desalination strikes
-are this model's S3 tripwire.
+These three numbers carry consequences beyond the war itself. Because an
+interceptor takes about three years to build, every missile fired in defense
+of the Gulf is gone for the duration — which rules out sustained all-out war,
+and quietly spends stock America also counts on for deterring China. Because
+Iran's cash runs out in roughly four months of blocked exports, economic
+gravity will eventually pull it toward a deal — but because neither side can
+afford to be seen quitting, the deal won't hold. That is not speculation; it
+is the April-to-July record, projected forward.
+</p>
+<p class="lede">
+Follow the chain one step further and it reaches ordinary life. Each
+deal-and-collapse cycle teaches traders to shrug at ceasefire headlines, so
+peace gets cheaper to announce and easier to abandon. And each week of
+interceptor drawdown leaves Gulf cities — whose drinking water comes from
+coastal desalination plants — a little less defended against the next cheap
+drone. That is why a strike on a desalination plant is this model's tripwire:
+it is the moment the war stops being about oil logistics and starts being
+about whether Kuwait City has water.
 </p>
 """, unsafe_allow_html=True)
 
@@ -597,15 +614,17 @@ with lcol:
                "infrastructure grind.")
 with rcol:
     tm = reg["touch"]
-    st.metric("Brief all-out episode within 3m",
+    st.metric("Odds of touching all-out war",
               f"{tm.get('p_visit_s4_3m', 0):.0%}",
-              f"but only {f3[4]:.0%} chance it *persists*", delta_color="off")
-    st.metric("Deal episode within 3m", f"{tm.get('p_visit_s5_3m', 0):.0%}",
-              f"only {f3[5]:.0%} still holding at 3m", delta_color="off")
+              f"within 3 months — but only {f3[4]:.0%} that it lasts",
+              delta_color="off")
+    st.metric("Odds of a ceasefire attempt", f"{tm.get('p_visit_s5_3m', 0):.0%}",
+              f"within 3 months — but only {f3[5]:.0%} that it holds",
+              delta_color="off")
     band = tm.get("race_band")
-    st.metric("All-out war before a deal",
+    st.metric("All-out war arrives before a deal",
               f"{band['lo']:.0%}–{band['hi']:.0%}" if band else "n/a",
-              "shown as a range — the point estimate is not robust",
+              "a range, honestly — this number resists precision",
               delta_color="off")
 st.markdown("""
 <p class="lede">
@@ -671,15 +690,16 @@ try:
     pr = read_latest("premia").iloc[-1]
     q1, q2, q3, q4 = st.columns(4)
     q1.metric("War premium", f"${fd['war_premium']:+.0f}",
-              f"Brent ${fd['brent_fred']:.0f} vs ${fd['fundamentals_fair']:.0f} fair",
-              delta_color="off")
-    q2.metric("Premium kept at 12M", f"{fd['frac_premium_persisting']:.0%}"
+              f"Brent trades at ${fd['brent_fred']:.0f}; without the war it "
+              f"would be near ${fd['fundamentals_fair']:.0f}", delta_color="off")
+    q2.metric("Still priced a year out", f"{fd['frac_premium_persisting']:.0%}"
               if pd.notna(fd.get("frac_premium_persisting")) else "n/a",
-              "the rest priced to fade", delta_color="off")
-    q3.metric("Gas premium (Europe)", f"{pr['gas_war_premium_proxy']:+.0%}",
+              "share of the premium the futures curve keeps at 12 months",
+              delta_color="off")
+    q3.metric("European gas premium", f"{pr['gas_war_premium_proxy']:+.0%}",
               "the only market pricing Gulf-infrastructure risk", delta_color="off")
-    q4.metric("Gold since war", f"{pr['gold_since_war']:+.0%}",
-              "falling = 'an oil event, not a world event'", delta_color="off")
+    q4.metric("Gold since the war began", f"{pr['gold_since_war']:+.0%}",
+              "falling gold = an oil event, not a world event", delta_color="off")
     st.caption("Fair value comes from oil's pre-war relationship to copper, the "
                "dollar, rates, and equities — what oil *would* cost in this "
                "economy with no war. The gap is the war premium. Copper matters "
