@@ -168,7 +168,7 @@ def main() -> int:
                                    if not isinstance(v, dict)}]), "fundamentals")
     print(f"[fundamentals] as of {d['as_of']} (FRED spot Brent)")
     print(f"[fundamentals] pre-war model R^2 = {d['prewar_r2']:.2f} "
-          "(Brent ~ USD + breakeven + real yield + copper + S&P, 2024-01..2026-01)")
+          "(Brent ~ {' + '.join(DRIVERS)}, 2024-01..2026-01)")
     print(f"[fundamentals] Brent ${d['brent_fred']:.1f} = fundamentals-fair "
           f"${d['fundamentals_fair']:.1f} + WAR PREMIUM ${d['war_premium']:+.1f}")
     if "backwardation_12m" in d:

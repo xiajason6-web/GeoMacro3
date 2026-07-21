@@ -38,12 +38,13 @@ def _bs_call(F, K, T, iv):
     return F * norm.cdf(d1) - K * norm.cdf(d2)  # zero-rate approx, fine for shape
 
 
-def density_for_expiry(tk: yf.Ticker, spot: float, expiry: str) -> dict | None:
+def density_from_calls(calls: pd.DataFrame, spot: float, expiry: str) -> dict | None:
+    """Core Breeden-Litzenberger given a calls frame with columns
+    strike / impliedVolatility / openInterest / bid."""
     T = (pd.Timestamp(expiry).date() - today_utc()).days / 365.0
     if T <= 0:
         return None
-    ch = tk.option_chain(expiry)
-    calls = ch.calls.copy()
+    calls = calls.copy()
     calls = calls[(calls["openInterest"].fillna(0) >= MIN_OI) & (calls["bid"] > 0)]
     calls = calls.dropna(subset=["impliedVolatility"])
     calls = calls[(calls["impliedVolatility"] > 0.05) & (calls["impliedVolatility"] < 3.0)]
@@ -88,7 +89,53 @@ def density_for_expiry(tk: yf.Ticker, spot: float, expiry: str) -> dict | None:
     }
 
 
+def _cboe_chain(symbol: str) -> tuple[float, dict]:
+    """CBOE's official public delayed-quotes JSON — cleaner than yfinance
+    (real bid/ask, exchange-computed IV, OI, all strikes). Returns
+    (spot, {expiry: calls_df}). Raises on any failure -> caller falls back."""
+    import re
+
+    import requests
+
+    r = requests.get(
+        f"https://cdn.cboe.com/api/global/delayed_quotes/options/{symbol}.json",
+        timeout=30, headers={"User-Agent": "iran-escalation-model/1.0 (research)"})
+    r.raise_for_status()
+    data = r.json()["data"]
+    spot = float(data["current_price"])
+    pat = re.compile(rf"^{symbol}(\d{{6}})([CP])(\d{{8}})$")
+    by_exp: dict[str, list] = {}
+    for o in data["options"]:
+        m = pat.match(o.get("option", ""))
+        if not m or m.group(2) != "C":
+            continue
+        yymmdd, strike = m.group(1), int(m.group(3)) / 1000.0
+        expiry = f"20{yymmdd[:2]}-{yymmdd[2:4]}-{yymmdd[4:6]}"
+        by_exp.setdefault(expiry, []).append({
+            "strike": strike, "bid": o.get("bid") or 0.0,
+            "impliedVolatility": o.get("iv"),
+            "openInterest": o.get("open_interest") or 0.0,
+        })
+    return spot, {e: pd.DataFrame(rows) for e, rows in by_exp.items()}
+
+
 def fetch(symbol: str = "USO") -> pd.DataFrame:
+    # preferred: CBOE official delayed feed; fallback: yfinance chains
+    rows = []
+    try:
+        spot, chains = _cboe_chain(symbol)
+        expiries = sorted(e for e in chains
+                          if (pd.Timestamp(e).date() - today_utc()).days >= MIN_EXPIRY_DAYS)
+        for e in expiries[:N_EXPIRIES]:
+            d = density_from_calls(chains[e], spot, e)
+            if d:
+                d.update({"symbol": symbol, "spot": spot, "source": "cboe"})
+                rows.append(d)
+        if rows:
+            return pd.DataFrame(rows)
+    except Exception:  # noqa: BLE001 — fall through to yfinance
+        pass
+
     tk = yf.Ticker(symbol)
     hist = tk.history(period="5d")
     if hist.empty:
@@ -96,12 +143,14 @@ def fetch(symbol: str = "USO") -> pd.DataFrame:
     spot = float(hist["Close"].iloc[-1])
     expiries = [e for e in (tk.options or ())
                 if (pd.Timestamp(e).date() - today_utc()).days >= MIN_EXPIRY_DAYS]
-    rows = []
     for e in expiries[:N_EXPIRIES]:
-        d = density_for_expiry(tk, spot, e)
+        try:
+            calls = tk.option_chain(e).calls
+        except Exception:  # noqa: BLE001
+            continue
+        d = density_from_calls(calls, spot, e)
         if d:
-            d["symbol"] = symbol
-            d["spot"] = spot
+            d.update({"symbol": symbol, "spot": spot, "source": "yfinance"})
             rows.append(d)
     return pd.DataFrame(rows)
 

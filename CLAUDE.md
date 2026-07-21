@@ -213,8 +213,18 @@ should *derive* the prior-strength slider.
 - **EIA ingest** (`src/ingest/eia.py`): key-gated (all keyless routes are dead —
   FRED mirrors discontinued, WPSR CSVs gone). Activates the crude-stocks driver
   in the fundamentals control automatically once EIA_API_KEY exists.
-- **CME options verdict**: futures option chains are NOT available via free
-  APIs (yfinance returns none); USO/BNO RND stays, caveat stands; paid upgrade.
+- **CME options verdict (final, 2026-07-21)**: no legitimate free route —
+  the FTP settlement files are gone and the CmeWS quotes endpoint blocks
+  scraping with an explicit Data Terms of Use prohibition. DO NOT attempt to
+  circumvent (compliance, not technical). Adopted substitute: **CBOE's official
+  public delayed-quotes JSON** (cdn.cboe.com) now feeds the RND — real bid/ask,
+  exchange-computed IV, OI, full chains for USO/BNO, with yfinance as fallback
+  (`source` column records which). Still ETF options (fund-roll caveat stands);
+  true futures options remain a paid upgrade.
+- **EIA ACTIVE (2026-07-21)**: key in .env; weekly crude stocks (410 Mbbl
+  latest) now a sixth driver in the fundamentals control — fair value $53.6,
+  premium $28 ± $10. NOTE: add EIA_API_KEY as a GitHub Actions secret so the
+  daily CI run also carries the inventories driver.
 
 ## What accumulates value from here
 Every `make refresh` lands a new dated vintage. A1/A4 backtesting is impossible
