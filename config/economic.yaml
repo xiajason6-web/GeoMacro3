@@ -4,17 +4,28 @@
 
 # US political-pain-from-oil: Brent $ maps to US pressure-to-deal in [0,1].
 # US pain is a PRICE story (gasoline/inflation, democratic electorate).
+# GROUNDED 2026-07-20 — the band matches the recession/approval literature:
+#   - oil burden >4% of GDP preceded recessions in 1973/79/90/2008; at current
+#     US GDP+consumption that's roughly Brent $120-140
+#   - Wells Fargo: $130 sustained => recession; others $150 (Bloomberg/Yahoo)
+#   - +10c gasoline ≈ -0.6% presidential approval (2016 study; G.E. Morris 2026);
+#     $10/bbl ≈ 25-30c gasoline => $100->$150 ≈ -7 to -9 pts approval
 us_oil_pain:
-  low: 100      # below this, negligible political pain
-  high: 150     # at/above, maximal pain (strong deal pressure)
+  low: 100      # approval drag becomes material (~gasoline passthrough begins to bite)
+  high: 150     # recession-consensus territory => maximal deal pressure
 
 # Iran endurance is a VOLUME story: strait shut => it cannot export => revenue
-# loss burns its fiscal buffer. Sanctions-hardened, so the buffer is large
-# relative to the burn (Mearsheimer's high-tolerance claim, quantified).
+# loss burns its fiscal buffer. Sanctions-hardened, so tolerance is high — but
+# the buffer is SMALLER than assumed at first build:
+# GROUNDED 2026-07-20: IMF regional outlook puts Iran's USABLE reserves at
+# ~$12.2B (vs ~$115B reported; >$100B frozen/inaccessible). Total incl. gold
+# ~$26-34B but not deployable; NDF oil fund down to ~$10B.
+# Sources: IMF via Al Jazeera 2026-04; Stimson Center 2025 ("Iran's Shrinking
+# Oil Reserve Fund"); prior 25e9 was an unfounded guess ~2x too high.
 iran_export:
   baseline_bpd: 1500000            # crude exports pre-disruption (already sanctioned), bpd
   via_hormuz_frac: 0.90            # share that must transit Hormuz/Kharg
-  fx_reserve_buffer_usd: 25.0e9    # accessible reserves buffer (scenario)
+  fx_reserve_buffer_usd: 12.2e9    # IMF usable-reserves estimate (see above)
   pain_horizon_days: 180           # runway shorter than this => rising Iran pain
 
 # Combined economic pressure -> S5 (de-escalation) drift. Bounded and small:
