@@ -22,6 +22,91 @@ import streamlit as st
 st.set_page_config(page_title="Iran Escalation Model", page_icon="🛢️",
                    layout="wide")
 
+# ---- university-press styling (after the Ricci cover) ---------------------- #
+# Deep green field + sage stripes + vermillion serif display. Also fixes the
+# stock-Streamlit annoyances: metric values/labels truncating to "…", oversized
+# vertical gaps, and sans-serif headings.
+st.markdown("""
+<style>
+:root {
+  --sage: #BFD8C7;
+  --sage-muted: rgba(191, 216, 199, 0.55);
+  --vermillion: #D14D28;
+  --green-raised: #1A3A2E;
+  --hairline: rgba(191, 216, 199, 0.18);
+}
+/* page geometry */
+.block-container { padding-top: 3.4rem; padding-bottom: 3rem; max-width: 1250px; }
+/* serif display type throughout */
+h1, h2, h3, h4, [data-testid="stMetricValue"], [data-testid="stMarkdownContainer"] p {
+  font-family: Georgia, "Palatino Linotype", "Book Antiqua", serif;
+}
+/* masthead */
+.masthead-kicker {
+  font-family: Georgia, serif; font-variant: small-caps; letter-spacing: 0.22em;
+  color: var(--sage); font-size: 0.95rem; margin: 0 0 0.2rem 0;
+}
+.masthead-title {
+  font-family: Georgia, serif; color: var(--vermillion); font-weight: 400;
+  font-size: 2.6rem; line-height: 1.08; margin: 0 0 0.15rem 0;
+}
+.masthead-sub {
+  font-family: Georgia, serif; font-style: italic; color: var(--vermillion);
+  opacity: 0.85; font-size: 1.15rem; margin: 0 0 1.1rem 0;
+}
+/* section headings: sage double-stripe motif (the cover's L) */
+h3 {
+  color: var(--sage) !important; font-weight: 500 !important;
+  font-size: 1.25rem !important;
+  border-left: 3px solid var(--sage); padding-left: 14px;
+  box-shadow: inset 8px 0 0 -6px var(--sage);
+  margin-top: 1.4rem !important; margin-bottom: 0.4rem !important;
+  padding-top: 0.1rem; padding-bottom: 0.1rem;
+}
+/* metrics: card on raised green, NO ellipsis truncation, serif values */
+[data-testid="stMetric"] {
+  background: var(--green-raised); border: 1px solid var(--hairline);
+  border-radius: 2px; padding: 0.7rem 0.9rem;
+}
+/* kill ellipsis truncation at EVERY level Streamlit nests it */
+[data-testid="stMetricValue"], [data-testid="stMetricValue"] *,
+[data-testid="stMetricLabel"], [data-testid="stMetricLabel"] *,
+[data-testid="stMetricDelta"], [data-testid="stMetricDelta"] * {
+  white-space: normal !important; overflow: visible !important;
+  text-overflow: clip !important;
+}
+[data-testid="stMetricValue"] {
+  font-size: 1.4rem !important; line-height: 1.25 !important; color: #EDF4EF;
+}
+[data-testid="stMetricLabel"], [data-testid="stMetricLabel"] p {
+  font-variant: small-caps; letter-spacing: 0.06em; color: var(--sage-muted);
+}
+[data-testid="stMetricDelta"] { font-size: 0.85rem !important; }
+/* tabs: small-caps serif, vermillion active underline */
+button[data-baseweb="tab"] {
+  font-family: Georgia, serif !important; letter-spacing: 0.05em;
+}
+button[data-baseweb="tab"][aria-selected="true"] {
+  color: var(--vermillion) !important;
+}
+[data-baseweb="tab-highlight"] { background-color: var(--vermillion) !important; }
+/* captions in muted sage; tighter */
+[data-testid="stCaptionContainer"] {
+  color: var(--sage-muted) !important; margin-top: -0.3rem;
+}
+/* dividers as sage hairlines, tighter rhythm */
+hr { border-color: var(--hairline) !important; margin: 1.1rem 0 !important; }
+/* expanders on raised green */
+[data-testid="stExpander"] {
+  background: var(--green-raised); border: 1px solid var(--hairline);
+  border-radius: 2px;
+}
+/* sidebar */
+[data-testid="stSidebar"] { border-right: 1px solid var(--hairline); }
+[data-testid="stSidebar"] h1 { font-size: 1.35rem; color: var(--sage); }
+</style>
+""", unsafe_allow_html=True)
+
 STATES = ["S0", "S1", "S2", "S3", "S4", "S5"]
 STATE_NAMES = {
     "S0": "Lull", "S1": "Tit-for-tat", "S2": "Chokepoint war",
@@ -239,9 +324,13 @@ cur = labels.iloc[-1]
 from src.common import read_latest  # noqa: E402
 
 # --------------------------------------------------------------------------- #
-# Header — the five numbers that matter
+# Masthead + the five numbers that matter
 # --------------------------------------------------------------------------- #
-st.title("Iran Escalation Pricing — P vs Q")
+st.markdown("""
+<p class="masthead-kicker">GeoMacro · a structural war model against the market</p>
+<h1 class="masthead-title">The Pricing of Escalation</h1>
+<p class="masthead-sub">Iran, the Strait of Hormuz, and what the oil market believes</p>
+""", unsafe_allow_html=True)
 
 c1, c2, c3, c4, c5 = st.columns(5)
 state_now = max(zip(reg["p0"], STATES))[1]
@@ -570,9 +659,11 @@ with tab_trust:
                     + ". Append-only, git-timestamped, auto-graded daily "
                       "([ledger](https://github.com/xiajason6-web/GeoMacro3/blob/main/calls/ledger.yaml)).")
         rows = [{"made": c["made"], "p": f"{c['p']:.0%}",
-                 "claim": c["claim"][:80],
+                 "claim": c["claim"],
                  "status": c.get("outcome", "open")} for c in doc["calls"]]
-        st.dataframe(pd.DataFrame(rows), hide_index=True)
+        st.dataframe(pd.DataFrame(rows), hide_index=True,
+                     column_config={"claim": st.column_config.TextColumn(
+                         "claim", width="large")})
     except Exception as exc:  # noqa: BLE001
         st.info(f"ledger unavailable: {exc}")
 

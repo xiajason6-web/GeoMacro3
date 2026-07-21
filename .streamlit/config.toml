@@ -1,0 +1,9 @@
+# University-press theme (after the Ricci cover): deep forest green field,
+# pale sage ink, vermillion display accents, serif type.
+[theme]
+base = "dark"
+primaryColor = "#C8451F"            # vermillion (title red)
+backgroundColor = "#122E24"         # deep forest green
+secondaryBackgroundColor = "#1A3A2E" # raised green (cards, sidebar)
+textColor = "#D9E7DD"               # pale sage
+font = "serif"
