@@ -65,3 +65,19 @@ calls:
     criteria: {type: coded_event, rung: S4, by: 2026-10-20}
     comparison: "Brief excursions likely, sustained S4 rare — this tests the excursion half"
     status: open
+
+  - id: 2026-07-21-durable-normal-dec31
+    made: 2026-07-21
+    claim: "Hormuz normalization proves DURABLE: 7dMA >= 60 on 14+ consecutive days at some point by Dec 31, 2026"
+    p: 0.58
+    criteria: {type: portwatch_ma7_gte_consecutive, threshold: 60, days: 14, by: 2026-12-31}
+    comparison: "Thesis-consistent variant of the any-day touch call (0.69): excludes phantom lulls"
+    status: open
+
+  - id: 2026-07-21-war-still-on-dec31
+    made: 2026-07-21
+    claim: "The war is effectively over at year-end: 7dMA >= 60 on the last PortWatch observation of 2026"
+    p: 0.19
+    criteria: {type: portwatch_ma7_gte_on_date, threshold: 60, "on": "2026-12-31"}
+    comparison: "The occupancy question — the model's real view: 81% the war is still on at year-end"
+    status: open

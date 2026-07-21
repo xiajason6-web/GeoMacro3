@@ -66,7 +66,56 @@ def _grade_coded_event(c: dict) -> tuple[str, str] | None:
     return None
 
 
-GRADERS = {"portwatch_ma7_gte": _grade_portwatch, "coded_event": _grade_coded_event}
+def _ma7(c: dict):
+    pw = read_latest("portwatch").copy()
+    pw["n_total"] = pd.to_numeric(pw["n_total"], errors="coerce")
+    pw["obs_date"] = pd.to_datetime(pw["obs_date"])
+    return pw.set_index("obs_date").sort_index()["n_total"].rolling(
+        7, min_periods=4).mean()
+
+
+def _grade_portwatch_consecutive(c: dict) -> tuple[str, str] | None:
+    """YES if the 7dMA holds >= threshold for `days` consecutive calendar days
+    at any point between made and by — the DURABLE-normalization variant."""
+    ma7 = _ma7(c)
+    made, by = pd.Timestamp(str(c["made"])), pd.Timestamp(str(c["criteria"]["by"]))
+    need = int(c["criteria"]["days"])
+    win = (ma7.loc[made:by] >= float(c["criteria"]["threshold"]))
+    run = (win.groupby((~win).cumsum()).cumsum())
+    if (run >= need).any():
+        d = run[run >= need].index[0]
+        return "YES", f"{need}d sustained >= {c['criteria']['threshold']} by {d.date()}"
+    if ma7.index.max() >= by:
+        return "NO", f"no {need}-day sustained recovery through {by.date()}"
+    if pd.Timestamp(today_utc()) > by + pd.Timedelta(days=GRACE_DAYS + 7):
+        return "NO", "deadline passed (data lag grace exhausted)"
+    return None
+
+
+def _grade_portwatch_on_date(c: dict) -> tuple[str, str] | None:
+    """YES if the 7dMA >= threshold on the LAST observation at/before `on` —
+    the occupancy ('is the war over on that date') variant."""
+    ma7 = _ma7(c)
+    on = pd.Timestamp(str(c["criteria"]["on"]))
+    upto = ma7.loc[:on].dropna()
+    # only grade once data reaches (or grace passes) the target date
+    if ma7.index.max() < on:
+        if pd.Timestamp(today_utc()) > on + pd.Timedelta(days=GRACE_DAYS + 7):
+            pass  # fall through and grade on the last available obs
+        else:
+            return None
+    if not len(upto):
+        return None
+    val = float(upto.iloc[-1])
+    ok = val >= float(c["criteria"]["threshold"])
+    return ("YES" if ok else "NO",
+            f"7dMA {val:.0f} on {upto.index[-1].date()} (last obs before {on.date()})")
+
+
+GRADERS = {"portwatch_ma7_gte": _grade_portwatch,
+           "portwatch_ma7_gte_consecutive": _grade_portwatch_consecutive,
+           "portwatch_ma7_gte_on_date": _grade_portwatch_on_date,
+           "coded_event": _grade_coded_event}
 
 
 def load() -> dict:

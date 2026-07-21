@@ -43,4 +43,4 @@ def test_ledger_file_parses_and_calls_are_wellformed():
     for c in doc["calls"]:
         assert 0.0 <= float(c["p"]) <= 1.0
         assert c["criteria"]["type"] in calls.GRADERS
-        assert "by" in c["criteria"]
+        assert ("by" in c["criteria"]) or ("on" in c["criteria"])

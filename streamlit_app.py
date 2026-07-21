@@ -420,7 +420,8 @@ if war_prem is not None:
               delta_color="off")
 if mdl_dec is not None and mkt_dec is not None:
     k5.metric("Hormuz normal by Dec-31", f"P {mdl_dec:.0%} · Q {mkt_dec:.0%}",
-              "our estimate vs prediction-market consensus", delta_color="off")
+              "on contract terms (any-day touch) — yet 81% the war is still on "
+              "at year-end: lulls decay", delta_color="off")
 
 st.markdown(f"""
 <p class="lede">
@@ -974,8 +975,14 @@ try:
                      "variant": f"{mdl - mkt:+.0%}" if mkt is not None else "—"})
     st.dataframe(pd.DataFrame(rows), hide_index=True)
     st.markdown('<p class="source">Identical resolution criteria on both '
-                'columns (PortWatch 7-day average ≥ 60). Every row is a '
-                'standing entry in the graded ledger (§IX).</p>',
+                'columns (PortWatch 7-day average ≥ 60, touched on any day). '
+                'Every row is a standing entry in the graded ledger (§IX). '
+                'Read carefully: these are TOUCH probabilities — the contract '
+                'resolves YES on a single qualifying day, and the model\'s own '
+                'lulls have a ~2.5-week median life. The thesis-consistent '
+                'variants are also on the ledger: durable normalization '
+                '(14 consecutive days ≥ 60) at 58%, and war-over-at-year-end '
+                'at just 19% — the model expects lulls, not peace.</p>',
                 unsafe_allow_html=True)
 except Exception as exc:  # noqa: BLE001
     st.info(f"variant table unavailable: {exc}")
