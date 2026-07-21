@@ -285,33 +285,49 @@ def scorecard_derived(_lake_key: str) -> dict:
 
 lake = build_lake()
 lake_key = lake["as_of"]
+# --------------------------------------------------------------------------- #
+# Additional styles for the essay layout (major sections, lede paragraphs)
+# --------------------------------------------------------------------------- #
+st.markdown("""
+<style>
+h2 {
+  color: var(--sage) !important; font-weight: 500 !important;
+  font-size: 1.55rem !important;
+  border-left: 3px solid var(--sage); padding-left: 16px;
+  box-shadow: inset 9px 0 0 -6px var(--sage);
+  margin-top: 2.4rem !important; margin-bottom: 0.5rem !important;
+}
+h3 { border-left: none; box-shadow: none; padding-left: 0;
+     font-style: italic; font-weight: 400 !important; }
+.lede { font-size: 1.02rem; line-height: 1.65; color: #D9E7DD; max-width: 62rem; }
+.lede em { color: var(--vermillion); font-style: normal; }
+.keybox { border: 1px solid var(--hairline); background: var(--green-raised);
+          padding: 0.8rem 1.1rem; border-radius: 2px; max-width: 62rem; }
+</style>
+""", unsafe_allow_html=True)
 
 # --------------------------------------------------------------------------- #
-# Sidebar — controls only (status lives in the Trust tab)
+# Sidebar — minimal. Prior strength is ALWAYS scorecard-derived.
 # --------------------------------------------------------------------------- #
 with st.sidebar:
     st.title("🛢️ Iran Escalation Model")
-    st.caption("A structural war model (**P**) vs market pricing (**Q**); alpha "
-               "is their divergence. **Research framework — not financial advice.**")
+    st.caption("A structural war model (**P**) against market pricing (**Q**); "
+               "the divergence is the edge. **Research framework — not "
+               "financial advice.**")
     derived = scorecard_derived(lake_key)
-    auto = st.toggle(
-        f"Auto prior strength (scorecard → {derived['strength']:.1f})", value=True,
-        help="Derive the Mearsheimer-prior weight from the live scorecard "
-             "(Trust tab). Off = set it manually.")
-    manual_strength = st.slider(
-        "Prior strength", 0.0, 4.0, 1.0, 0.25, disabled=auto,
-        help="0 = data only (degenerate at n this small); 0.26 = 50/50 "
-             "crossover; ~3 = current scorecard; 4 = empirical-Bayes ceiling.")
-    prior_strength = derived["strength"] if auto else manual_strength
-    st.caption(f"prior_strength = **{prior_strength:.2f}** "
-               f"({'derived' if auto else 'manual'})")
+    st.caption(f"Prior weight is set by the live Mearsheimer scorecard "
+               f"(§III): currently **{derived['strength']:.1f}** "
+               f"(fit M = {derived['M']:.0%}). No manual override — if the war "
+               "stops behaving like the thesis, the weight falls on its own.")
     st.divider()
     if st.button("↻ Force data refresh"):
         build_lake.clear()
         st.rerun()
-    st.caption("[GitHub](https://github.com/xiajason6-web/GeoMacro3) · "
-               "data cached 1h · daily CI-graded "
+    st.caption("[GitHub](https://github.com/xiajason6-web/GeoMacro3) · data "
+               "cached 1h · daily CI-graded "
                "[calls ledger](https://github.com/xiajason6-web/GeoMacro3/blob/main/calls/ledger.yaml)")
+
+prior_strength = derived["strength"]
 
 try:
     reg = regime(prior_strength, lake_key)
@@ -324,7 +340,7 @@ cur = labels.iloc[-1]
 from src.common import read_latest  # noqa: E402
 
 # --------------------------------------------------------------------------- #
-# Masthead + the five numbers that matter
+# Masthead
 # --------------------------------------------------------------------------- #
 st.markdown("""
 <p class="masthead-kicker">GeoMacro · a structural war model against the market</p>
@@ -332,360 +348,481 @@ st.markdown("""
 <p class="masthead-sub">Iran, the Strait of Hormuz, and what the oil market believes</p>
 """, unsafe_allow_html=True)
 
-c1, c2, c3, c4, c5 = st.columns(5)
-state_now = max(zip(reg["p0"], STATES))[1]
-c1.metric("Regime now", f"{state_now} · {STATE_NAMES[state_now]}",
-          f"{max(reg['p0']):.0%} probability", delta_color="off")
-c2.metric("Hormuz transits", f"{cur['frac']:.0%} of normal",
-          f"7dMA {cur['ma7']:.0f} calls/day", delta_color="off")
-try:
-    px = read_latest("prices")
-    bz = px[px["ticker"] == "BZ=F"].sort_values("obs_date")
-    brent_now = float(bz["close"].iloc[-1])
-    fd_head = read_latest("fundamentals").iloc[-1]
-    c3.metric("Brent", f"${brent_now:.0f}",
-              f"${fd_head['war_premium']:+.0f} war premium", delta_color="off")
-except Exception:  # noqa: BLE001
-    c3.metric("Brent", "n/a")
-try:
-    pm = read_latest("predmkt_panel")
-    hz = pm[(pm["family"] == "hormuz_normalize")
-            & (pm["question"].str.contains("December", na=False))]
-    mkt_dec = float(hz.iloc[0]["yes_prob"])
-    mdl_dec = reg["model_cdf"].get("2026-12-31")
-    c4.metric("Normal by Dec 31", f"P {mdl_dec:.0%} · Q {mkt_dec:.0%}",
-              "model vs market", delta_color="off")
-except Exception:  # noqa: BLE001
-    c4.metric("Normal by Dec 31", "n/a")
-c5.metric("Mearsheimer-fit", f"{derived['M']:.0%}",
-          f"prior strength {derived['strength']:.1f}", delta_color="off")
+# =========================================================================== #
+# I. THE CONCLUSION
+# =========================================================================== #
+st.markdown("## I. The conclusion")
 
-tab_now, tab_p, tab_q, tab_div, tab_trust = st.tabs(
-    ["📍 Now", "🔮 Forecast · P", "💹 Market · Q", "⚡ Divergence", "🧭 Trust"])
+f3 = reg["forecasts"]["3m"]
+t = reg["touch"]
+p_s2plus = sum(f3[2:5])
+try:
+    fd_h = read_latest("fundamentals").iloc[-1]
+    war_prem = float(fd_h["war_premium"])
+    kept = float(fd_h["frac_premium_persisting"]) if pd.notna(
+        fd_h.get("frac_premium_persisting")) else None
+except Exception:  # noqa: BLE001
+    war_prem, kept = None, None
+mdl_dec = reg["model_cdf"].get("2026-12-31")
+try:
+    pm_ = read_latest("predmkt_panel")
+    hz_ = pm_[(pm_["family"] == "hormuz_normalize")
+              & (pm_["question"].str.contains("December", na=False))]
+    mkt_dec = float(hz_.iloc[0]["yes_prob"])
+except Exception:  # noqa: BLE001
+    mkt_dec = None
+
+k1, k2, k3, k4, k5 = st.columns(5)
+k1.metric("The war persists", f"{p_s2plus:.0%}",
+          "chance still in chokepoint/infra war in 3 months", delta_color="off")
+k2.metric("It widens, not climbs", f"{f3[3]:.0%} vs {f3[4]:.0%}",
+          "Gulf-infrastructure war vs all-out war, 3 months", delta_color="off")
+k3.metric("Deals happen — and decay", f"{t.get('p_visit_s5_3m', 0):.0%}",
+          f"chance of a deal episode in 3m; only {f3[5]:.0%} still holding",
+          delta_color="off")
+if war_prem is not None:
+    k4.metric("War premium in Brent", f"${war_prem:+.0f}",
+              f"curve keeps {kept:.0%} of it at 12 months" if kept else "",
+              delta_color="off")
+if mdl_dec is not None and mkt_dec is not None:
+    k5.metric("Reopen by Dec 31", f"P {mdl_dec:.0%} · Q {mkt_dec:.0%}",
+              "model vs market — a live graded call", delta_color="off")
+
+st.markdown(f"""
+<p class="lede">
+The model's read: <em>this war does not end soon, and it spreads sideways rather
+than up.</em> In three months the most likely world is still a strangled Strait
+of Hormuz with strikes bleeding outward into Gulf infrastructure — not an
+all-out regional war ({f3[4]:.0%}), and not a durable peace ({f3[5]:.0%}).
+Ceasefire <b>episodes</b> are actually likely ({t.get('p_visit_s5_3m', 0):.0%}
+within three months) — but April and June both showed the pattern: deals arrive
+suddenly and decay within weeks, because neither side can absorb the domestic
+cost of staying in one.
+</p>
+<p class="lede">
+<b>Where this differs from the market:</b> the market has already conceded the
+front — near-term reopening odds collapsed weeks ago, so there is no edge in
+simply betting the war continues. The differences that remain are subtler:
+(1) the <b>back of the oil futures curve</b> still prices most of the war
+premium away by next year, while the model sees a longer grind; (2) the
+<b>horizontal axis</b> — strikes on Gulf water, power, and export infrastructure
+— is priced in European gas but invisible in oil instruments; (3) oil options
+pay up for a <b>durable resolution</b> that neither the deal odds nor the
+deal-decay record supports. Each of these is developed below, and the boldest
+disagreements are live, graded calls in the public ledger (§VII).
+</p>
+""", unsafe_allow_html=True)
 
 # =========================================================================== #
-with tab_now:
-    left, right = st.columns([3, 2])
-    with left:
-        st.subheader("Strait of Hormuz daily transits")
-        pw = read_latest("portwatch").copy()
-        pw["obs_date"] = pd.to_datetime(pw["obs_date"])
-        pw = pw[pw["obs_date"] >= "2026-01-01"].set_index("obs_date")
-        chart_df = pd.DataFrame({"daily": pd.to_numeric(pw["n_total"], errors="coerce")})
-        chart_df["7d MA"] = chart_df["daily"].rolling(7).mean()
-        chart_df["normal (60)"] = 60.0
-        st.line_chart(chart_df, height=300)
-        st.caption(f"Latest {pw.index.max().date()} — PortWatch publishes ~5d late.")
-    with right:
-        st.subheader("Weekly regime")
-        lab = labels.copy()
-        lab["week"] = pd.to_datetime(lab["week"]).dt.date
-        show = lab[["week", "state", "frac"]].tail(12).iloc[::-1]
-        show["frac"] = (show["frac"] * 100).round(0).astype(int).astype(str) + "%"
-        show.columns = ["week", "state", "transits"]
-        st.dataframe(show, hide_index=True, height=300)
+# II. THE WAR TODAY
+# =========================================================================== #
+st.markdown("## II. The war today")
+st.markdown("""
+<p class="lede">
+The single most important series in this system: <b>how many ships pass the
+Strait of Hormuz each day.</b> Roughly a fifth of the world's oil transits this
+strait; the count below (IMF PortWatch, the same source Polymarket uses to
+settle its markets) is the war's pulse. Normal is ~75 calls/day; the red line
+(60) is the market's own definition of "back to normal."
+</p>
+""", unsafe_allow_html=True)
 
-    st.subheader("Horizontal spread — is the war widening?")
-    sc1, sc2 = st.columns([3, 2])
-    with sc1:
-        try:
-            hs = read_latest("horizontal_spread").copy()
-            hs["week"] = pd.to_datetime(hs["week"])
-            st.bar_chart(hs.set_index("week")[
-                ["third_party_fronts", "proxy_active", "broad_hit"]], height=240)
-        except Exception as exc:  # noqa: BLE001
-            st.warning(f"spread index unavailable: {exc}")
-    with sc2:
-        try:
-            from src.features.horizontal_spread import spread_now
-            sp = spread_now()
-            st.metric("Fronts this week", sp["third_party_fronts"],
-                      sp["third_party_list"] or "—", delta_color="off")
-            st.metric("Trailing-4wk spread", f"{sp['trailing_4wk_index']:.1f}",
-                      f"war average {sp['war_avg_index']:.1f}", delta_color="off")
-            if sp["trailing_4wk_index"] > sp["war_avg_index"] * 1.3:
-                st.warning("**War widening** — spread well above the war average.")
-        except Exception as exc:  # noqa: BLE001
-            st.warning(f"spread reading unavailable: {exc}")
-    with st.expander("ⓘ What this measures"):
-        st.markdown("Distinct third-country targets struck per week (GCC/Iraq/"
-                    "Yemen; belligerent homelands and maritime chokepoint targets "
-                    "excluded). This is the S3 axis — Mearsheimer's horizontal "
-                    "escalation, and the dimension no oil instrument prices.")
+left, right = st.columns([3, 2])
+with left:
+    st.subheader("Strait of Hormuz daily transits")
+    pw = read_latest("portwatch").copy()
+    pw["obs_date"] = pd.to_datetime(pw["obs_date"])
+    pw = pw[pw["obs_date"] >= "2026-01-01"].set_index("obs_date")
+    chart_df = pd.DataFrame({"daily": pd.to_numeric(pw["n_total"], errors="coerce")})
+    chart_df["7d MA"] = chart_df["daily"].rolling(7).mean()
+    chart_df["normal (60)"] = 60.0
+    st.line_chart(chart_df, height=300)
+    st.caption(f"Latest {pw.index.max().date()} — PortWatch publishes ~5 days "
+               "late. Read the story left to right: normal traffic into early "
+               "March, the collapse when Iran closed the strait, four months "
+               "of near-zero, the partial reopening after the June deal — and "
+               "the re-closure when that deal died in July.")
+with right:
+    st.subheader("Weekly regime")
+    lab = labels.copy()
+    lab["week"] = pd.to_datetime(lab["week"]).dt.date
+    show = lab[["week", "state", "frac"]].tail(12).iloc[::-1]
+    show["frac"] = (show["frac"] * 100).round(0).astype(int).astype(str) + "%"
+    show.columns = ["week", "state", "transits"]
+    st.dataframe(show, hide_index=True, height=300)
+    st.caption("The war coded into six phases: S0 lull · S1 military "
+               "tit-for-tat · S2 chokepoint war · S3 Gulf-infrastructure war · "
+               "S4 all-out war · S5 deal. Everything downstream keys off this "
+               "classification.")
 
-    with st.expander("📋 Recent coded events (LLM-coded, frozen prompts)"):
-        ev = read_latest("coded_events").copy()
-        ev["date"] = pd.to_datetime(ev["date"])
-        ev_show = ev.sort_values("date", ascending=False)[
-            ["date", "actor", "rung", "target_type", "target_country", "severity", "action"]
-        ].head(25)
-        ev_show["date"] = ev_show["date"].dt.date
-        st.dataframe(ev_show, hide_index=True, height=300)
+st.subheader("Is the war widening? (the S3 axis)")
+sc1, sc2 = st.columns([3, 2])
+with sc1:
+    try:
+        hs = read_latest("horizontal_spread").copy()
+        hs["week"] = pd.to_datetime(hs["week"])
+        st.bar_chart(hs.set_index("week")[
+            ["third_party_fronts", "proxy_active", "broad_hit"]], height=240)
+        st.caption("Distinct third-country targets struck per week — Kuwait, "
+                   "UAE, Saudi, Yemen fronts — excluding the belligerents "
+                   "themselves and pure maritime targets. This is Mearsheimer's "
+                   "'horizontal escalation' made countable.")
+    except Exception as exc:  # noqa: BLE001
+        st.warning(f"spread index unavailable: {exc}")
+with sc2:
+    try:
+        from src.features.horizontal_spread import spread_now
+        sp = spread_now()
+        st.metric("Fronts this week", sp["third_party_fronts"],
+                  sp["third_party_list"] or "—", delta_color="off")
+        st.metric("Trailing 4-week spread", f"{sp['trailing_4wk_index']:.1f}",
+                  f"war average {sp['war_avg_index']:.1f}", delta_color="off")
+        if sp["trailing_4wk_index"] > sp["war_avg_index"] * 1.3:
+            st.warning("**Widening.** Recent spread is well above the war's "
+                       "average — the July re-escalation went broader than any "
+                       "earlier phase, not just hotter.")
+    except Exception as exc:  # noqa: BLE001
+        st.warning(f"spread reading unavailable: {exc}")
+
+with st.expander("Recent coded events — the raw material"):
+    ev = read_latest("coded_events").copy()
+    ev["date"] = pd.to_datetime(ev["date"])
+    ev_show = ev.sort_values("date", ascending=False)[
+        ["date", "actor", "rung", "target_type", "target_country", "severity", "action"]
+    ].head(25)
+    ev_show["date"] = ev_show["date"].dt.date
+    st.dataframe(ev_show, hide_index=True, height=300)
+    st.caption("News headlines coded into structured events by an LLM under "
+               "frozen, versioned prompts (a second model agrees on the phase "
+               "coding 82% of the time). Hand-verified history through July 17 "
+               "is frozen; the live coder appends but never rewrites.")
 
 # =========================================================================== #
-with tab_p:
-    st.subheader("State probabilities by horizon")
+# III. THE ENDURANCE ARGUMENT
+# =========================================================================== #
+st.markdown("## III. The endurance argument — why the forecast looks this way")
+st.markdown("""
+<p class="lede">
+The forecast is not a curve-fit; it is a <em>thesis, graded live</em>. John
+Mearsheimer's argument, encoded: airpower alone has never coerced a state
+facing existential stakes; the US cannot sustain a maximum-tempo campaign; Iran
+can hit tankers and Gulf infrastructure cheaply; and neither side can absorb
+the domestic humiliation of backing down. If that argument is right, the war
+<b>grinds and widens</b>. Each claim below is scored against the data — the
+average sets how heavily the thesis weighs on the forecast, and if the war
+stops behaving this way, the scores fall and the model reverts toward the
+historical base rate (most interstate wars end within months).
+</p>
+""", unsafe_allow_html=True)
+
+sc = scorecard_derived(lake_key)
+m1, m2, m3 = st.columns(3)
+m1.metric("Thesis fit", f"{sc['M']:.0%}",
+          "how Mearsheimer-shaped the war is right now", delta_color="off")
+m2.metric("Thesis weight in forecast", f"{sc['strength']:.1f} / 4",
+          "derived from the fit — not hand-set", delta_color="off")
+_tot = 23.0 + 68.0 + sc["strength"] * 88.0
+m3.metric("What the forecast rests on",
+          f"{sc['strength']*88/_tot:.0%} thesis · {68/_tot:.0%} history · {23/_tot:.0%} this war",
+          "six analog conflicts supply the history", delta_color="off")
+
+LABELS = {
+    "no_coercive_leverage": ("No coercive leverage",
+                             "US strikes are not producing Iranian concessions"),
+    "deals_decay": ("Deals decay", "both 2026 ceasefires collapsed in ~3 weeks"),
+    "asymmetric_escalation": ("Horizontal escalation",
+                              "the war spreads to cheap third-country targets"),
+    "face_lock": ("Face-lock", "neither side can afford to be seen backing down"),
+    "endurance_asymmetry": ("Endurance asymmetry", "Iran out-endures US patience"),
+}
+for k, (label, gloss) in LABELS.items():
+    s = sc["sub_scores"].get(k, 0.5)
+    colA, colB = st.columns([1, 3])
+    colA.markdown(f"**{label}**  \n{s:.2f}")
+    with colB:
+        st.progress(min(1.0, s))
+        st.caption(f"{gloss} — {sc['details'].get(k, '')}")
+
+st.subheader("The physical mechanism: production, money, will")
+ci = reg.get("covariates") or {}
+g1, g2, g3 = st.columns(3)
+g1.metric("Interceptor production gap",
+          f"{ci.get('munitions', {}).get('production_gap', 0):.0f} : 1",
+          "Iran builds missiles ~15× faster than the US builds interceptors",
+          delta_color="off")
+try:
+    from src.features.economic import readings as _econ_r
+    _e = _econ_r()
+    g2.metric("Iran's fiscal runway", f"{_e['iran_runway_days']:.0f} days"
+              if _e.get("iran_runway_days") else "long",
+              "usable reserves ÷ blocked-export losses (IMF figure)",
+              delta_color="off")
+    g3.metric("US oil pain", f"{_e['us_oil_pain']:.0%}",
+              "political pressure from pump prices — none below ~$100 Brent",
+              delta_color="off")
+except Exception:  # noqa: BLE001
+    pass
+st.markdown("""
+<p class="lede">
+<b>Second-order effects</b> follow from these numbers. The production gap
+(~35-month interceptor lead times) means defending the Gulf is a one-way
+drawdown of magazines — so sustained all-out war is not a real option, and
+every week of defense spends stock the US also needs for Pacific deterrence.
+Iran's ~130-day fiscal runway means economic pressure <em>eventually</em>
+forces it toward a deal — but face-lock means the deal doesn't hold, which is
+exactly the April→June→July cycle. <b>Third-order:</b> repeated
+deal-and-collapse cycles teach markets to fade ceasefire headlines (visible in
+oil's muted deal rallies), while depleted interceptors leave Gulf
+infrastructure progressively less defended — making the <em>next</em>
+horizontal strike cheaper and more damaging: water and power for millions in
+Kuwait and Riyadh sit under that umbrella, which is why desalination strikes
+are this model's S3 tripwire.
+</p>
+""", unsafe_allow_html=True)
+
+# =========================================================================== #
+# IV. THE FORECAST (P)
+# =========================================================================== #
+st.markdown("## IV. The forecast — where the war goes from here")
+lcol, rcol = st.columns([3, 2])
+with lcol:
     rows = []
     for h in ("2w", "1m", "3m", "6m"):
         for s, p in zip(STATES, reg["forecasts"][h]):
             rows.append({"horizon": h, "state": f"{s} {STATE_NAMES[s]}", "prob": p})
     fdf = pd.DataFrame(rows).pivot(index="state", columns="horizon", values="prob")
     st.dataframe(fdf[["2w", "1m", "3m", "6m"]].style.format("{:.0%}"), height=260)
-
-    st.subheader("Touch probabilities — visiting vs staying")
-    t = reg["touch"]
-    tm1, tm2, tm3, tm4 = st.columns(4)
-    if t.get("p_visit_s4_3m") is not None:
-        tm1.metric("Visit S4 within 3m", f"{t['p_visit_s4_3m']:.0%}",
-                   f"6m {t['p_visit_s4_6m']:.0%}", delta_color="off")
-        tm2.metric("Visit S5 within 3m", f"{t['p_visit_s5_3m']:.0%}",
-                   f"6m {t['p_visit_s5_6m']:.0%}", delta_color="off")
-    band = t.get("race_band")
-    tm3.metric("S4 before S5", f"{band['lo']:.0%}–{band['hi']:.0%}" if band
-               else f"~{t['p_touch_s4_before_s5']:.0%}",
-               "range — level is knob-sensitive", delta_color="off")
-    tm4.metric("Median weeks to S5",
-               f"{t['median_weeks_to_s5']:.0f}" if t.get("median_weeks_to_s5") else "n/a",
-               "when reached; deals then decay", delta_color="off")
-    st.caption("Brief **excursions** into all-out war are likely; **sustained** "
-               "all-out war is rare (visit ≫ occupancy). Deal episodes likely "
-               "and short-lived — matching April and June.")
-
-    st.subheader("Endurance gauges (move the forecast via M9)")
-    ci = reg.get("covariates") or {}
-    g1, g2, g3 = st.columns(3)
-    g1.metric("Munitions p_a", f"{ci.get('p_a', 0):.2f}",
-              f"production gap {ci.get('munitions', {}).get('production_gap', 0):.0f}:1 → S4 gate",
+    st.caption("Probability of being in each phase at each horizon. Read the 3m "
+               "column top to bottom: the mass sits in the chokepoint/"
+               "infrastructure grind.")
+with rcol:
+    tm = reg["touch"]
+    st.metric("Brief all-out episode within 3m",
+              f"{tm.get('p_visit_s4_3m', 0):.0%}",
+              f"but only {f3[4]:.0%} chance it *persists*", delta_color="off")
+    st.metric("Deal episode within 3m", f"{tm.get('p_visit_s5_3m', 0):.0%}",
+              f"only {f3[5]:.0%} still holding at 3m", delta_color="off")
+    band = tm.get("race_band")
+    st.metric("All-out war before a deal",
+              f"{band['lo']:.0%}–{band['hi']:.0%}" if band else "n/a",
+              "shown as a range — the point estimate is not robust",
               delta_color="off")
-    g2.metric("Spread p_c", f"{ci.get('p_c', 0):.2f}", "→ S3 pump", delta_color="off")
-    g3.metric("Economic p_b", f"{ci.get('p_b', 0):.2f}", "→ S5 drift", delta_color="off")
-    if ci and "static_forecasts" in reg:
-        s3d = reg["forecasts"]["3m"][3] - reg["static_forecasts"]["3m"][3]
-        s4d = reg["forecasts"]["3m"][4] - reg["static_forecasts"]["3m"][4]
-        st.caption(f"Net effect vs static prior at 3m: **S3 {s3d:+.0%}, S4 {s4d:+.0%}** "
-                   "— the war widens; the all-out tail shrinks.")
-    with st.expander("ⓘ How P is built"):
-        md = ci.get("mass_decomposition")
-        st.markdown(
-            "Conjugate Dirichlet–multinomial over weekly S0–S5 transitions, three "
-            "voices: the Mearsheimer prior (weight set by the scorecard), six "
-            "analog conflicts (Tanker War → 2025), and this war's observed weeks. "
-            + (f"Current mass: **{md['prior']:.0%} prior / {md['analogs']:.0%} "
-               f"analogs / {md['live_data']:.0%} live**. " if md else "")
-            + "Endurance gauges multiply specific transition cells (bounded, "
-              "calibrated where evidence exists — see ASSUMPTIONS.md). Effect "
-              "sizes for S4 were calibrated DOWN after the empirical continuation "
-              "check showed double-counting.")
+st.markdown("""
+<p class="lede">
+The crucial distinction is <em>visiting versus staying</em>. The model gives a
+real chance of touching all-out war briefly — the war has already done it
+twice, in the opening decapitation campaign and the March strikes — but almost
+no chance of staying there, because §III's arithmetic makes maximum tempo
+unsustainable. Same asymmetry for peace: deal <b>episodes</b> are likelier
+than not within months, but deals <b>holding</b> is rare. If you remember one
+thing from this page: escalation spikes and ceasefires are both, on this
+model's read, <em>episodes inside a grind</em> — not endings.
+</p>
+""", unsafe_allow_html=True)
 
 # =========================================================================== #
-with tab_q:
-    left, right = st.columns(2)
-    with left:
-        st.subheader("Prediction markets — normalization odds")
-        try:
-            pm = read_latest("predmkt_panel")
-            hz = pm[pm["family"] == "hormuz_normalize"].copy()
-            hz = hz[(hz["end_date"].notna()) & (hz["volume"].fillna(0) > 100_000)]
-            hz = hz[hz["end_date"] > dt.date.today().isoformat()].sort_values("end_date")
-            cdf = hz[["end_date", "yes_prob", "volume"]].rename(
-                columns={"end_date": "by", "yes_prob": "P(normalized)"})
-            st.line_chart(cdf.set_index("by")["P(normalized)"], height=220)
-            with st.expander("markets detail"):
-                st.dataframe(
-                    cdf.assign(volume=cdf["volume"].map(lambda v: f"${v:,.0f}"))
-                       .style.format({"P(normalized)": "{:.1%}"}),
-                    hide_index=True)
-        except Exception as exc:  # noqa: BLE001
-            st.warning(f"prediction-market leg unavailable: {exc}")
-    with right:
-        st.subheader("Futures curve — revealed duration")
-        try:
-            fc = read_latest("futures_curve")
-            bzl = fc[fc["root"] == "BZ"].sort_values("contract_month")
-            st.line_chart(bzl.set_index("contract_month")["close"], height=220)
-            spread6 = float(bzl["close"].iloc[0] - bzl["close"].iloc[min(6, len(bzl) - 1)])
-            st.caption(f"Front-to-6M {spread6:+.2f}: backwardation = disruption "
-                       "priced as temporary.")
-        except Exception as exc:  # noqa: BLE001
-            st.warning(f"curve unavailable: {exc}")
-
-    st.subheader("What kind of war is priced, where")
-    try:
-        fd = read_latest("fundamentals").iloc[-1]
-        pr = read_latest("premia").iloc[-1]
-        q1, q2, q3, q4 = st.columns(4)
-        q1.metric("War premium in Brent", f"${fd['war_premium']:+.0f}",
-                  f"fair ${fd['fundamentals_fair']:.0f} + premium", delta_color="off")
-        q2.metric("Kept at 12M by curve",
-                  f"{fd['frac_premium_persisting']:.0%}"
-                  if pd.notna(fd.get("frac_premium_persisting")) else "n/a",
-                  "persistence already priced", delta_color="off")
-        q3.metric("Gas war premium (S3)", f"{pr['gas_war_premium_proxy']:+.0%}",
-                  f"TTF {pr['ttf_elevation']:+.0%} vs HH {pr['hh_elevation']:+.0%}",
-                  delta_color="off")
-        q4.metric("Gold since war", f"{pr['gold_since_war']:+.0%}",
-                  "supply-local" if "supply-local" in str(pr["gold_regime"])
-                  else "⚠ SYSTEMIC", delta_color="off")
-    except Exception as exc:  # noqa: BLE001
-        st.info(f"premium decomposition unavailable: {exc}")
-
-    try:
-        rnd = read_latest("rnd")
-        r = rnd[rnd["symbol"] == "USO"].iloc[-1]
-        o1, o2, o3 = st.columns(3)
-        o1.metric("Options: P(~Brent>100)", f"{r['p_up16']:.0%}")
-        o2.metric("P(~Brent<75)", f"{r['p_dn13']:.0%}")
-        o3.metric("ATM implied vol", f"{r['atm_iv']:.0%}")
-        st.caption("Downside priced heavier than upside — the options market "
-                   "fears the deal-drop more than escalation.")
-    except Exception:  # noqa: BLE001
-        pass
-    with st.expander("ⓘ How Q is read"):
-        st.markdown(
-            "War premium = Brent minus a pre-war OLS fair value (copper/USD/"
-            "rates/S&P — copper is the demand twin that shares oil's drivers but "
-            "not its war). Brent−WTI localizes the premium to the chokepoint; "
-            "TTF-vs-HenryHub is the only instrument pricing the horizontal (S3) "
-            "axis; gold classifies the war as supply-local vs systemic. ETF "
-            "options are delayed — trust changes over levels.")
-
+# V. THE MARKET (Q)
 # =========================================================================== #
-with tab_div:
-    st.subheader("Head-to-head: model vs market on Hormuz normalization")
+st.markdown("## V. What the market believes")
+st.markdown("""
+<p class="lede">
+Four independent windows into the market's mind. Prediction markets state
+reopening odds directly. The futures curve reveals how long traders expect
+disruption to last (today's barrel trading far above next year's = "this is
+temporary"). Options prices imply the odds of extreme moves. And the premium
+decomposition asks how much of today's oil price is war at all — versus
+ordinary supply and demand.
+</p>
+""", unsafe_allow_html=True)
+
+qa, qb = st.columns(2)
+with qa:
+    st.subheader("Prediction markets — reopening odds")
     try:
         pm = read_latest("predmkt_panel")
         hz = pm[pm["family"] == "hormuz_normalize"].copy()
-        hz = hz[hz["end_date"].notna()]
-        rows = []
-        for by, mdl in reg["model_cdf"].items():
-            sub = hz[hz["end_date"].astype(str).str.startswith(by[:7])]
-            mkt = float(sub.sort_values("volume", ascending=False).iloc[0]["yes_prob"]) \
-                if len(sub) else None
-            rows.append({"normalized by": by, "model P": f"{mdl:.0%}",
-                         "market Q": f"{mkt:.0%}" if mkt is not None else "—",
-                         "P − Q": f"{mdl - mkt:+.0%}" if mkt is not None else "—"})
-        st.dataframe(pd.DataFrame(rows), hide_index=True)
-        st.caption("Positive P−Q = model more optimistic on reopening than the "
-                   "market. These rows are live calls in the public ledger "
-                   "(Trust tab) — they get graded.")
+        hz = hz[(hz["end_date"].notna()) & (hz["volume"].fillna(0) > 100_000)]
+        hz = hz[hz["end_date"] > dt.date.today().isoformat()].sort_values("end_date")
+        cdf = hz[["end_date", "yes_prob"]].rename(
+            columns={"end_date": "by", "yes_prob": "P(normalized)"})
+        st.line_chart(cdf.set_index("by")["P(normalized)"], height=220)
+        st.caption("Millions of dollars of real-money volume. The near months "
+                   "collapsed to ~zero weeks ago — the market has fully "
+                   "conceded that the strait stays shut near-term.")
     except Exception as exc:  # noqa: BLE001
-        st.info(f"head-to-head unavailable: {exc}")
-
-    st.subheader("Signals")
+        st.warning(f"prediction markets unavailable: {exc}")
+with qb:
+    st.subheader("Futures curve — how long is 'temporary'?")
     try:
-        from src.alpha.signals import compute_all
-        dirmap = {-1: "🔴 SHORT", 0: "⚪ FLAT", 1: "🟢 LONG"}
-        for s in compute_all():
-            with st.expander(f"{dirmap[s['direction']]}  **{s['signal']}**  "
-                             f"(confidence: {s['confidence']})",
-                             expanded=False):
-                st.write(s["rationale"])
-                for k, v in (s["value"] or {}).items():
-                    if isinstance(v, dict):
-                        v = v.get("yes_prob", v)
-                    st.markdown(f"- `{k}` = {v}")
-                st.warning(s["caveats"])
+        fc = read_latest("futures_curve")
+        bzl = fc[fc["root"] == "BZ"].sort_values("contract_month")
+        st.line_chart(bzl.set_index("contract_month")["close"], height=220)
+        spread6 = float(bzl["close"].iloc[0] - bzl["close"].iloc[min(6, len(bzl) - 1)])
+        st.caption(f"Brent by delivery month. The steep downslope "
+                   f"(front-to-6M {spread6:+.0f}) says the market prices this "
+                   "disruption as mostly gone within a year — the single "
+                   "clearest thing this model disagrees with.")
     except Exception as exc:  # noqa: BLE001
-        st.error(f"signal computation failed: {exc}")
-    st.caption("A5 (deal hedge) is mandatory whenever A1 is on. A3 survived 94% "
-               "of its perturbation grid; survival earns monitoring, not capital.")
+        st.warning(f"curve unavailable: {exc}")
 
-    st.subheader("Peace-shock stress — the trade's true risk")
-    try:
-        from src.alpha.stress import WINDOWS, _window_moves, book_pnl, BOOK
-        rows = []
-        for name, (lo, hi) in WINDOWS.items():
-            m = _window_moves(lo, hi)
-            if not m:
-                continue
-            pnl = book_pnl(m)
-            rows.append({"scenario": name, "brent": f"{m['brent']:+.1%}",
-                         "tankers": f"{m['tankers']:+.1%}",
-                         "book P&L": f"{pnl['TOTAL']:+.2%}"})
-        st.dataframe(pd.DataFrame(rows), hide_index=True)
-        with st.expander("ⓘ Stylized book"):
-            st.dataframe(pd.DataFrame([{"sleeve": k, "weight": v} for k, v in BOOK.items()]),
-                         hide_index=True)
-            st.markdown("Windows are this war's own tapes (June MOU, April "
-                        "whiplash, July collapse). Rule: if the deal-shock row is "
-                        "worse than −2%, escalation sleeves are oversized.")
-    except Exception as exc:  # noqa: BLE001
-        st.error(f"stress unavailable: {exc}")
+st.subheader("How much of the oil price is war — and which war?")
+try:
+    fd = read_latest("fundamentals").iloc[-1]
+    pr = read_latest("premia").iloc[-1]
+    q1, q2, q3, q4 = st.columns(4)
+    q1.metric("War premium", f"${fd['war_premium']:+.0f}",
+              f"Brent ${fd['brent_fred']:.0f} vs ${fd['fundamentals_fair']:.0f} fair",
+              delta_color="off")
+    q2.metric("Premium kept at 12M", f"{fd['frac_premium_persisting']:.0%}"
+              if pd.notna(fd.get("frac_premium_persisting")) else "n/a",
+              "the rest priced to fade", delta_color="off")
+    q3.metric("Gas premium (Europe)", f"{pr['gas_war_premium_proxy']:+.0%}",
+              "the only market pricing Gulf-infrastructure risk", delta_color="off")
+    q4.metric("Gold since war", f"{pr['gold_since_war']:+.0%}",
+              "falling = 'an oil event, not a world event'", delta_color="off")
+    st.caption("Fair value comes from oil's pre-war relationship to copper, the "
+               "dollar, rates, and equities — what oil *would* cost in this "
+               "economy with no war. The gap is the war premium. Copper matters "
+               "because it shares oil's demand drivers but not its war: it is "
+               "the counterfactual twin. Note gold: in a war the textbook says "
+               "buy gold, yet it has *fallen* — the market classifies this as a "
+               "supply disruption, not a systemic crisis. If gold ever starts "
+               "rising *with* escalation, that re-classification is the single "
+               "scariest signal on this page.")
+except Exception as exc:  # noqa: BLE001
+    st.info(f"premium decomposition unavailable: {exc}")
 
 # =========================================================================== #
-with tab_trust:
-    st.subheader("Mearsheimer scorecard — is the war behaving as the thesis predicts?")
-    sc = scorecard_derived(lake_key)
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Mearsheimer-fit M", f"{sc['M']:.0%}", "fraction of restrictions confirmed",
-              delta_color="off")
-    m2.metric("Derived prior strength", f"{sc['strength']:.2f}",
-              "drives the sidebar (auto mode)", delta_color="off")
-    _tot = 23.0 + 68.0 + sc["strength"] * 88.0
-    m3.metric("Posterior mass",
-              f"{23/_tot:.0%} live · {68/_tot:.0%} analogs · {sc['strength']*88/_tot:.0%} prior",
-              delta_color="off")
-    LABELS = {
-        "no_coercive_leverage": "No coercive leverage",
-        "deals_decay": "Deals decay",
-        "asymmetric_escalation": "Asymmetric / horizontal escalation",
-        "face_lock": "Face-lock",
-        "endurance_asymmetry": "Endurance asymmetry",
-    }
-    for k, label in LABELS.items():
-        s = sc["sub_scores"].get(k, 0.5)
-        colA, colB = st.columns([1, 3])
-        colA.markdown(f"**{label}**  \n{s:.2f}")
-        with colB:
-            st.progress(min(1.0, s))
-            st.caption(sc["details"].get(k, ""))
-    with st.expander("ⓘ Why derive the prior weight this way"):
-        st.markdown("Each restriction is graded from data (deal half-lives, "
-                    "spread trajectory, cost asymmetry, face-lock, runways). High "
-                    "M → trust the prior; if the war deviates (a deal holds), the "
-                    "score falls and the prior stops dominating. It cannot "
-                    "overstay. Weights are equal (judgment at n=1) — currently "
-                    "moot because all sub-scores agree.")
+# VI. THE DIVERGENCE — and what the positions mean
+# =========================================================================== #
+st.markdown("## VI. The divergence — model vs market, and the positions")
 
-    st.divider()
-    st.subheader("📋 Public track record")
-    try:
-        from src.report.calls import load, summary
-        doc = load()
-        s = summary(doc)
-        st.markdown(f"**{s['n_calls']} calls** since {s['first_call']} — "
-                    f"{s['n_open']} open, {s['n_resolved']} resolved"
-                    + (f", **Brier {s['brier']:.3f}**" if s["brier"] is not None else "")
-                    + ". Append-only, git-timestamped, auto-graded daily "
-                      "([ledger](https://github.com/xiajason6-web/GeoMacro3/blob/main/calls/ledger.yaml)).")
-        rows = [{"made": c["made"], "p": f"{c['p']:.0%}",
-                 "claim": c["claim"],
-                 "status": c.get("outcome", "open")} for c in doc["calls"]]
-        st.dataframe(pd.DataFrame(rows), hide_index=True,
-                     column_config={"claim": st.column_config.TextColumn(
-                         "claim", width="large")})
-    except Exception as exc:  # noqa: BLE001
-        st.info(f"ledger unavailable: {exc}")
+st.subheader("Head-to-head on the question both sides price")
+try:
+    pm = read_latest("predmkt_panel")
+    hz = pm[pm["family"] == "hormuz_normalize"].copy()
+    hz = hz[hz["end_date"].notna()]
+    rows = []
+    for by, mdl in reg["model_cdf"].items():
+        sub = hz[hz["end_date"].astype(str).str.startswith(by[:7])]
+        mkt = float(sub.sort_values("volume", ascending=False).iloc[0]["yes_prob"]) \
+            if len(sub) else None
+        rows.append({"strait normal by": by, "model P": f"{mdl:.0%}",
+                     "market Q": f"{mkt:.0%}" if mkt is not None else "—",
+                     "P − Q": f"{mdl - mkt:+.0%}" if mkt is not None else "—"})
+    st.dataframe(pd.DataFrame(rows), hide_index=True)
+    st.caption("Positive P−Q: the model is *more* optimistic about reopening "
+               "than the market at that date. These are not hypotheticals — "
+               "each row is a timestamped call in the public ledger (§VII), "
+               "graded automatically when the date passes.")
+except Exception as exc:  # noqa: BLE001
+    st.info(f"head-to-head unavailable: {exc}")
 
-    st.divider()
-    st.subheader("Data status")
+st.markdown("""
+<div class="keybox">
+<b>How to read the positions below.</b> 🟢 <b>LONG</b> = the position profits
+if escalation/persistence exceeds what the market has priced (e.g. owning oil
+exposure or upside options). 🔴 <b>SHORT</b> = profits if resolution comes
+faster or risk premium deflates. ⚪ <b>FLAT</b> = the model sees no edge —
+which is a conclusion, not an absence of one. <b>Confidence</b> measures how
+much evidence backs the signal's <em>logic</em> (did it survive robustness
+tests? how much data supports it?), not the odds of profit — a
+<b>low-confidence</b> signal is a hypothesis to watch, a <b>high-confidence</b>
+one has survived deliberate attempts to break it. None of them are sized
+positions, and the standing rule is that any escalation-long position is
+paired with cheap deal-shock protection, because peace arrives overnight here
+(April 7 went from "a whole civilization will die tonight" to a ceasefire in
+hours).
+</div>
+""", unsafe_allow_html=True)
+
+try:
+    from src.alpha.signals import compute_all
+    dirmap = {-1: "🔴 SHORT", 0: "⚪ FLAT", 1: "🟢 LONG"}
+    for s in compute_all():
+        with st.expander(f"{dirmap[s['direction']]}  **{s['signal']}**  "
+                         f"(confidence: {s['confidence']})", expanded=False):
+            st.write(s["rationale"])
+            for k, v in (s["value"] or {}).items():
+                if isinstance(v, dict):
+                    v = v.get("yes_prob", v)
+                st.markdown(f"- `{k}` = {v}")
+            st.warning(s["caveats"])
+except Exception as exc:  # noqa: BLE001
+    st.error(f"signal computation failed: {exc}")
+
+st.subheader("The stress test that disciplines everything")
+try:
+    from src.alpha.stress import WINDOWS, _window_moves, book_pnl
+    rows = []
+    for name, (lo, hi) in WINDOWS.items():
+        m = _window_moves(lo, hi)
+        if not m:
+            continue
+        pnl = book_pnl(m)
+        rows.append({"scenario (this war's own tapes)": name,
+                     "brent": f"{m['brent']:+.1%}", "tankers": f"{m['tankers']:+.1%}",
+                     "hedged book": f"{pnl['TOTAL']:+.2%}"})
+    st.dataframe(pd.DataFrame(rows), hide_index=True)
+    st.caption("A stylized escalation-long book replayed against the war's own "
+               "deal windows. The April tape costs an *unhedged* book ~-2.3%; "
+               "with the deal hedge it loses ~-0.5%. That difference is why the "
+               "hedge is mandatory, not optional: the biggest risk in being "
+               "long this war is peace, however briefly it lasts.")
+except Exception as exc:  # noqa: BLE001
+    st.error(f"stress unavailable: {exc}")
+
+# =========================================================================== #
+# VII. TRUST
+# =========================================================================== #
+st.markdown("## VII. Why believe any of this — the track record")
+st.markdown("""
+<p class="lede">
+A model that never risks being wrong is an opinion. This one publishes
+timestamped, falsifiable calls with explicit resolution criteria, graded
+automatically every day by CI against the same data sources the markets
+settle on. The Brier score (0 = clairvoyant, 0.25 = coin-flipping) accumulates
+below as calls resolve — and the ledger is append-only: no call, once made,
+can be edited or quietly deleted.
+</p>
+""", unsafe_allow_html=True)
+
+try:
+    from src.report.calls import load, summary
+    doc = load()
+    s = summary(doc)
+    st.markdown(f"**{s['n_calls']} public calls** since {s['first_call']} — "
+                f"{s['n_open']} open, {s['n_resolved']} resolved"
+                + (f", **Brier {s['brier']:.3f}**" if s["brier"] is not None else "")
+                + " · [ledger on GitHub](https://github.com/xiajason6-web/GeoMacro3/blob/main/calls/ledger.yaml)")
+    rows = [{"made": c["made"], "p": f"{c['p']:.0%}", "claim": c["claim"],
+             "status": c.get("outcome", "open")} for c in doc["calls"]]
+    st.dataframe(pd.DataFrame(rows), hide_index=True,
+                 column_config={"claim": st.column_config.TextColumn(
+                     "claim", width="large")})
+except Exception as exc:  # noqa: BLE001
+    st.info(f"ledger unavailable: {exc}")
+
+with st.expander("Data status (cached 1h)"):
     cols = st.columns(3)
     for i, (k, v) in enumerate(lake["status"].items()):
         icon = "🟢" if "FAIL" not in str(v) else "🔴"
         cols[i % 3].caption(f"{icon} **{k}**: {v}")
 
-    with st.expander("ⓘ Honest limitations — read before believing any number"):
-        st.markdown("""
-1. **n = 1 war** (~24 weekly transitions): the posterior is mostly prior +
-   analogs, and says so above.
-2. **Q is free/delayed data** — ETF options, ~5-day PortWatch lag. Trust
-   changes over levels.
-3. **P and Q share PortWatch** (model input AND Polymarket's resolution
-   source) — divergences are decomposed before being called alpha.
-4. **Deals decay** (April, June precedents) — the peace-shock hedge is
-   mandatory, and the stress table shows why.
+with st.expander("Honest limitations — read before believing any number"):
+    st.markdown("""
+1. **One war, ~24 observed weeks.** The forecast leans on the thesis and on
+   six analog conflicts, and says exactly how much (§III).
+2. **Market data is free and delayed** — ETF options, ~5-day transit lag.
+   Trust day-over-day changes more than absolute levels.
+3. **The model and Polymarket share a data source** (PortWatch), so part of any
+   gap can be timing, not disagreement — the pipeline decomposes this before
+   calling anything an edge.
+4. **Deals decay** is a thesis claim with n=2 (April, June). If a ceasefire
+   holds, the scorecard falls and the whole forecast softens on its own.
 
-Full register: [ASSUMPTIONS.md](https://github.com/xiajason6-web/GeoMacro3/blob/main/ASSUMPTIONS.md)
-— every judgment knob tagged founded / defensible / arbitrary, adversarially
-swept. All headline conclusions survive ±50% perturbation.
+Every judgment knob in the model is registered, tagged (founded / defensible /
+arbitrary), and adversarially perturbed ±50% —
+[ASSUMPTIONS.md](https://github.com/xiajason6-web/GeoMacro3/blob/main/ASSUMPTIONS.md).
+All §I conclusions survive that sweep. **Not financial advice.**
 """)
