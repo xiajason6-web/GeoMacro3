@@ -31,4 +31,7 @@ prices:
   energy_equity: ["XLE", "XOP", "OIH"]
   tanker_equity: ["FRO", "INSW", "TNK", "TRMD", "NAT", "STNG"]
   cross_asset: ["ITA", "PPA", "JETS", "GLD", "DX-Y.NYB"]
+  # Gulf-market proxies (free equity ETFs; true sovereign CDS is paid data).
+  # The S3 (Gulf-infrastructure) axis is DIRECT risk to these markets.
+  gulf_markets: ["KSA", "UAE", "QAT"]
   lookback_days: 400

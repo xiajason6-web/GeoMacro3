@@ -215,6 +215,12 @@ def build_lake() -> dict:
         status["premia"] = "ok"
     except Exception as exc:  # noqa: BLE001
         status["premia"] = f"FAILED: {str(exc)[:50]}"
+    try:
+        from src.features.equities import readthrough as _eqrt
+        wp(_eqrt(), "equities_readthrough")
+        status["equities"] = "ok"
+    except Exception as exc:  # noqa: BLE001
+        status["equities"] = f"FAILED: {str(exc)[:50]}"
     return {"status": status, "as_of": dt.datetime.utcnow().isoformat()}
 
 
@@ -365,7 +371,7 @@ st.markdown(f"""
 <p class="masthead-sub">Iran, the Strait of Hormuz, and the term structure of a war</p>
 <p class="notemeta">{dt.date.today():%B %d, %Y} · Stance: <b>persistence over
 resolution</b>, expressed at the back of the curve and always hedged for the
-deal · Horizon: 3–6 months · All calls public and machine-graded (§VIII)</p>
+deal · Horizon: 3–6 months · All calls public and machine-graded (§IX)</p>
 """, unsafe_allow_html=True)
 
 # =========================================================================== #
@@ -776,7 +782,7 @@ try:
                 'macro drivers but not its war exposure. A gold rally '
                 'concurrent with escalation would mark reclassification from '
                 'supply-local to systemic and is monitored as a tripwire '
-                '(§VII).</p>', unsafe_allow_html=True)
+                '(§VIII).</p>', unsafe_allow_html=True)
 except Exception as exc:  # noqa: BLE001
     st.info(f"premium decomposition unavailable: {exc}")
 
@@ -798,7 +804,78 @@ except Exception:  # noqa: BLE001
 # =========================================================================== #
 # VI. VARIANT VIEW & POSITIONING
 # =========================================================================== #
-st.markdown("## VI. The variant view, quantified — and positioning")
+# =========================================================================== #
+# VI. EQUITIES READ-THROUGH
+# =========================================================================== #
+st.markdown("## VI. Equities read-through")
+st.markdown("""
+<p class="lede">
+The macro thesis maps onto equities unevenly, and the tape — bucket returns
+since the outbreak, through the June détente, and through the July
+re-escalation, plus measured sensitivity on days with coded Gulf-infrastructure
+(S3) strikes — separates the buckets that <em>say</em> they trade the war from
+those that actually do.
+</p>
+""", unsafe_allow_html=True)
+
+try:
+    eq = read_latest("equities_readthrough").copy()
+    disp = pd.DataFrame({
+        "bucket": eq["bucket"],
+        "since outbreak": eq["since_war"].map("{:+.1%}".format),
+        "June détente": eq["detente_jun"].map("{:+.1%}".format),
+        "July re-escalation": eq["reescalation_jul"].map("{:+.1%}".format),
+        "S3-day edge (per day)": eq["s3_sensitivity"].map("{:+.2%}".format),
+    })
+    st.dataframe(disp, hide_index=True)
+    st.markdown('<p class="source">Source: Yahoo daily closes, equal-weight '
+                'buckets (tankers FRO/INSW/TNK/TRMD/NAT/STNG; defense ITA/PPA; '
+                'energy XLE/XOP/OIH; Gulf KSA/UAE/QAT ETFs as the free proxy '
+                'for Gulf sovereign risk — true CDS is paid data; airlines '
+                'JETS). S3-day edge = mean return on coded S3-event days minus '
+                'all other war days (n=8 event days; treat as indicative).</p>',
+                unsafe_allow_html=True)
+
+    st.markdown("""
+<p class="lede">
+<b>Tankers — the all-weather expression.</b> Up ~11% since the outbreak and
+positive through <em>both</em> the détente and the re-escalation: war-risk
+premia and rerouting lift rates when the strait is contested, and reopening
+lifts volumes when it is not. The bucket is long the war's <em>duration</em>
+more than its direction — consistent with our base case — with the standing
+caveat that hulls are themselves S2 targets.
+<br><br>
+<b>Defense — the unpriced restock story (our variant).</b> Down ~7% since
+the outbreak and down through the July re-escalation: the market is treating
+defense as risk-beta, not as the beneficiary of the §III arithmetic. Yet the
+production-deficit logic is scenario-independent — magazines drawn down at a
+15:1 replacement gap must be rebuilt <em>whether or not a settlement holds</em>.
+Of everything on this page, this is the read-through most at odds with its own
+fundamentals; it is also the least time-sensitive, with a multi-year horizon
+rather than our 3–6 months.
+<br><br>
+<b>Energy equity — the cleanest tactical war-beta.</b> Sold off ~8% into the
+June settlement, rallied ~7% on its collapse, and carries the largest positive
+S3-day edge. For expressing short-horizon escalation views in equities rather
+than futures, this is the bucket.
+<br><br>
+<b>Gulf markets — the lateral axis, priced at last.</b> Down ~10% since the
+outbreak with a <em>negative</em> S3-day edge and almost no détente recovery:
+equity investors are charging a persistent war discount that oil instruments
+do not carry. This is where our "the lateral axis is unpriced" argument meets
+its exception — unpriced in oil, priced in Riyadh — and a widening-war view is
+expressible as a Gulf-market underweight against energy-equity length.
+<br><br>
+<b>Airlines — the settlement long.</b> The mirror image: up 5% in the détente,
+down 7.5% in the re-escalation. A cheap, liquid way to lean toward the
+deal-holds scenario — or the natural short leg against tankers for a
+pure-persistence expression.
+</p>
+""", unsafe_allow_html=True)
+except Exception as exc:  # noqa: BLE001
+    st.info(f"equities read-through unavailable: {exc}")
+
+st.markdown("## VII. The variant view, quantified — and positioning")
 
 st.subheader("Our probabilities against consensus, same contract terms")
 try:
@@ -816,7 +893,7 @@ try:
     st.dataframe(pd.DataFrame(rows), hide_index=True)
     st.markdown('<p class="source">Identical resolution criteria on both '
                 'columns (PortWatch 7-day average ≥ 60). Every row is a '
-                'standing entry in the graded ledger (§VIII).</p>',
+                'standing entry in the graded ledger (§IX).</p>',
                 unsafe_allow_html=True)
 except Exception as exc:  # noqa: BLE001
     st.info(f"variant table unavailable: {exc}")
@@ -873,7 +950,7 @@ except Exception as exc:  # noqa: BLE001
 # =========================================================================== #
 # VII. CATALYSTS & TRIPWIRES
 # =========================================================================== #
-st.markdown("## VII. Catalysts and tripwires")
+st.markdown("## VIII. Catalysts and tripwires")
 st.markdown("""
 <p class="lede">
 <b>Upside catalysts for the persistence view:</b> a strike on Gulf
@@ -893,7 +970,7 @@ signal on this page and warrants immediate de-risking of carry expressions.
 # =========================================================================== #
 # VIII. RISKS, TRACK RECORD, METHODOLOGY
 # =========================================================================== #
-st.markdown("## VIII. Risks to our view — and the graded record")
+st.markdown("## IX. Risks to our view — and the graded record")
 st.markdown("""
 <p class="lede">
 The honest core: this is one war, roughly twenty-four coded weeks. The

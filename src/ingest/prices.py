@@ -34,6 +34,7 @@ def fetch() -> pd.DataFrame:
         "energy_equity": cfg["energy_equity"],
         "tanker_equity": cfg["tanker_equity"],
         "cross_asset": cfg["cross_asset"],
+        "gulf_markets": cfg.get("gulf_markets", []),
     }
     ticker_group = {t: g for g, ts in groups.items() for t in ts}
     all_tickers = list(ticker_group.keys())
