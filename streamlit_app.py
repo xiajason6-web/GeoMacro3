@@ -283,13 +283,13 @@ def scorecard_derived(_lake_key: str) -> dict:
 lake = build_lake()
 lake_key = lake["as_of"]
 # --------------------------------------------------------------------------- #
-# Additional styles for the essay layout (major sections, lede paragraphs)
+# Styles for the research-note layout
 # --------------------------------------------------------------------------- #
 st.markdown("""
 <style>
 h2 {
   color: var(--sage) !important; font-weight: 500 !important;
-  font-size: 1.55rem !important;
+  font-size: 1.5rem !important;
   margin-top: 2.4rem !important; margin-bottom: 0.5rem !important;
 }
 h3 { font-style: italic; font-weight: 400 !important; }
@@ -297,22 +297,27 @@ h3 { font-style: italic; font-weight: 400 !important; }
 .lede em { color: var(--vermillion); font-style: normal; }
 .keybox { border: 1px solid var(--hairline); background: var(--green-raised);
           padding: 0.8rem 1.1rem; border-radius: 2px; max-width: 62rem; }
+.notemeta { font-family: Georgia, serif; color: var(--sage-muted);
+            font-size: 0.9rem; letter-spacing: 0.04em; margin-bottom: 0.2rem; }
+.source { color: var(--sage-muted); font-size: 0.78rem; font-style: italic; }
 </style>
 """, unsafe_allow_html=True)
 
 # --------------------------------------------------------------------------- #
-# Sidebar — minimal. Prior strength is ALWAYS scorecard-derived.
+# Sidebar
 # --------------------------------------------------------------------------- #
 with st.sidebar:
-    st.title("🛢️ Iran Escalation Model")
-    st.caption("A structural war model (**P**) against market pricing (**Q**); "
-               "the divergence is the edge. **Research framework — not "
+    st.title("🛢️ GeoMacro Research")
+    st.caption("**Coverage:** the US–Iran war and the oil complex. A structural "
+               "escalation model (P) marked against market pricing (Q); the "
+               "variant view is the product. **Research framework — not "
                "financial advice.**")
     derived = scorecard_derived(lake_key)
-    st.caption(f"Prior weight is set by the live Mearsheimer scorecard "
-               f"(§III): currently **{derived['strength']:.1f}** "
-               f"(fit M = {derived['M']:.0%}). No manual override — if the war "
-               "stops behaving like the thesis, the weight falls on its own.")
+    st.caption(f"Framework weight is set mechanically by the thesis scorecard "
+               f"(§III): currently **{derived['strength']:.1f}** on a 0–4 scale "
+               f"(thesis fit {derived['M']:.0%}). There is no manual override: "
+               "if incoming data stops confirming the framework, its weight in "
+               "the forecast declines automatically.")
     st.divider()
     if st.button("↻ Force data refresh"):
         build_lake.clear()
@@ -333,19 +338,40 @@ cur = labels.iloc[-1]
 
 from src.common import read_latest  # noqa: E402
 
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def brent_spot_history(_lake_key: str) -> pd.DataFrame:
+    """FRED Europe Brent spot (DCOILBRENTEU), keyless — the series behind the
+    war-premium decomposition, displayed rather than merely asserted."""
+    import io
+    import requests
+    r = requests.get("https://fred.stlouisfed.org/graph/fredgraph.csv",
+                     params={"id": "DCOILBRENTEU", "cosd": "2025-07-01"},
+                     timeout=30)
+    r.raise_for_status()
+    df = pd.read_csv(io.StringIO(r.text))
+    df.columns = ["date", "brent"]
+    df["date"] = pd.to_datetime(df["date"])
+    df["brent"] = pd.to_numeric(df["brent"], errors="coerce")
+    return df.dropna().set_index("date")
+
+
 # --------------------------------------------------------------------------- #
 # Masthead
 # --------------------------------------------------------------------------- #
-st.markdown("""
-<p class="masthead-kicker">GeoMacro · a structural war model against the market</p>
+st.markdown(f"""
+<p class="masthead-kicker">GeoMacro Research · Global Macro · Energy & Geopolitics</p>
 <h1 class="masthead-title">The Pricing of Escalation</h1>
-<p class="masthead-sub">Iran, the Strait of Hormuz, and what the oil market believes</p>
+<p class="masthead-sub">Iran, the Strait of Hormuz, and the term structure of a war</p>
+<p class="notemeta">{dt.date.today():%B %d, %Y} · Stance: <b>persistence over
+resolution</b>, expressed at the back of the curve and always hedged for the
+deal · Horizon: 3–6 months · All calls public and machine-graded (§VIII)</p>
 """, unsafe_allow_html=True)
 
 # =========================================================================== #
-# I. THE CONCLUSION
+# I. INVESTMENT SUMMARY
 # =========================================================================== #
-st.markdown("## I. The conclusion")
+st.markdown("## I. Investment summary")
 
 f3 = reg["forecasts"]["3m"]
 t = reg["touch"]
@@ -353,10 +379,12 @@ p_s2plus = sum(f3[2:5])
 try:
     fd_h = read_latest("fundamentals").iloc[-1]
     war_prem = float(fd_h["war_premium"])
+    fair = float(fd_h["fundamentals_fair"])
+    spot_fred = float(fd_h["brent_fred"])
     kept = float(fd_h["frac_premium_persisting"]) if pd.notna(
         fd_h.get("frac_premium_persisting")) else None
 except Exception:  # noqa: BLE001
-    war_prem, kept = None, None
+    war_prem = fair = spot_fred = kept = None
 mdl_dec = reg["model_cdf"].get("2026-12-31")
 try:
     pm_ = read_latest("predmkt_panel")
@@ -367,60 +395,85 @@ except Exception:  # noqa: BLE001
     mkt_dec = None
 
 k1, k2, k3, k4, k5 = st.columns(5)
-k1.metric("The war persists", f"{p_s2plus:.0%}",
-          "odds the strait is still a war zone in three months", delta_color="off")
-k2.metric("It widens, not climbs", f"{f3[3]:.0%} vs {f3[4]:.0%}",
-          "odds of a Gulf-wide infrastructure war vs an all-out war",
-          delta_color="off")
-k3.metric("Deals happen — and decay", f"{t.get('p_visit_s5_3m', 0):.0%}",
-          f"odds of a ceasefire attempt; only {f3[5]:.0%} that one holds",
+k1.metric("Base case: the grind persists", f"{p_s2plus:.0%}",
+          "probability the strait remains disrupted at 3 months", delta_color="off")
+k2.metric("Shape of the risk", f"{f3[3]:.0%} vs {f3[4]:.0%}",
+          "Gulf-infrastructure widening vs all-out escalation", delta_color="off")
+k3.metric("Ceasefire risk is episodic", f"{t.get('p_visit_s5_3m', 0):.0%}",
+          f"probability of a truce attempt; {f3[5]:.0%} that it durably holds",
           delta_color="off")
 if war_prem is not None:
-    k4.metric("War premium in oil", f"${war_prem:+.0f}",
-              f"per barrel of Brent; {kept:.0%} still priced a year out" if kept
-              else "per barrel of Brent", delta_color="off")
+    k4.metric("Geopolitical premium in Brent", f"${war_prem:+.0f}/bbl",
+              f"{kept:.0%} retained by the 12M contract" if kept else "",
+              delta_color="off")
 if mdl_dec is not None and mkt_dec is not None:
-    k5.metric("Strait reopens by Dec 31", f"P {mdl_dec:.0%} · Q {mkt_dec:.0%}",
-              "this model vs the betting market", delta_color="off")
+    k5.metric("Hormuz normal by Dec-31", f"P {mdl_dec:.0%} · Q {mkt_dec:.0%}",
+              "our estimate vs prediction-market consensus", delta_color="off")
 
 st.markdown(f"""
 <p class="lede">
-<em>This war does not end soon, and it grows outward, not upward.</em> Three
-months from now, the most likely world still has the Strait of Hormuz closed
-and strikes landing on Gulf infrastructure — Kuwaiti desalination plants, Saudi
-terminals, US bases in Jordan. All-out war stays unlikely ({f3[4]:.0%}), and so
-does lasting peace ({f3[5]:.0%}). A ceasefire attempt is actually
-<b>probable</b> — but the war has already produced two, in April and in June,
-and each collapsed within about three weeks. The model expects that pattern to
-repeat: deals arrive suddenly, and then they die.
+<b>Our view.</b> We expect the conflict to persist through the investment
+horizon and to broaden laterally — toward Gulf critical infrastructure and
+third-country basing — rather than escalate vertically into sustained
+theater-wide war. We assign {p_s2plus:.0%} to continued disruption at three
+months against {f3[4]:.0%} to durable all-out escalation and {f3[5]:.0%} to a
+ceasefire that holds. Truce announcements are likely within the horizon
+({t.get('p_visit_s5_3m', 0):.0%}) but are, in our framework, <em>episodes
+rather than terminal events</em>: both 2026 precedents decayed inside a month.
 </p>
 <p class="lede">
-<b>Where this view differs from the market's:</b> not on whether the war
-continues — the market gave up on a quick reopening weeks ago, and there is no
-money in agreeing with everyone. The remaining disagreements are three. First,
-oil for delivery <b>next year</b> is priced as if most of the war premium will
-be gone by then; this model expects the grind to outlast that optimism. Second,
-the war's real growth axis — strikes on Gulf <b>water, power, and export
-facilities</b> — barely shows up in oil prices at all; the only market pricing
-it is European natural gas. Third, oil options pay heavily for a <b>peace that
-sticks</b>, which neither the betting markets nor the two dead ceasefires
-support. Each disagreement is developed below, and the boldest ones are
-standing bets in the public ledger (§VII), graded automatically as the dates
-pass.
+<b>Where we differ from consensus.</b> Consensus, as expressed in market
+pricing, has already capitulated on near-term reopening; we see no residual
+edge in the front. Our variant view sits in three places. <b>(1) Duration:</b>
+the 12-month Brent contract retains only ~{kept:.0%} of the current
+${war_prem:+.0f}/bbl geopolitical premium — the curve is underwriting a
+resolution our framework does not expect on that timeline. <b>(2) The lateral
+axis:</b> infrastructure risk to Gulf water, power, and export capacity is
+priced in European gas (TTF) but is essentially absent from oil instruments —
+a cross-market inconsistency. <b>(3) Resolution durability:</b> the oil
+options market pays for downside consistent with a durable settlement;
+prediction markets price a final deal in single digits, and the empirical
+half-life of 2026 ceasefires is ~3 weeks. We fade the durable-peace tail while
+carrying cheap deal-shock protection against its arrival.
 </p>
 """, unsafe_allow_html=True)
 
+st.subheader("Scenario framework, 3-month horizon")
+if fair is not None:
+    scen = pd.DataFrame([
+        {"scenario": "Bear (for the premium): settlement holds",
+         "probability": f"~{f3[5]:.0%}",
+         "path for Brent": f"premium unwinds toward fundamentals (${fair:.0f}–{fair+10:.0f})",
+         "positioning consequence": "deal-shock hedges pay; escalation longs stopped"},
+        {"scenario": "Base: grind persists and widens",
+         "probability": f"~{p_s2plus:.0%}",
+         "path for Brent": f"range-bound near spot (${spot_fred-5:.0f}–{spot_fred+10:.0f}); back-of-curve repricing higher",
+         "positioning consequence": "long deferred contracts / calendar expressions carry positively"},
+        {"scenario": "Tail: vertical excursion (S4 touch)",
+         "probability": f"~{t.get('p_visit_s4_3m', 0):.0%} touch",
+         "path for Brent": "transient spike well above $110; mean-reverts as tempo proves unsustainable",
+         "positioning consequence": "convexity (OTM calls) monetized into strength, not held"},
+    ])
+    st.dataframe(scen, hide_index=True,
+                 column_config={"scenario": st.column_config.TextColumn(width="medium"),
+                                "path for Brent": st.column_config.TextColumn(width="large")})
+    st.markdown('<p class="source">Probabilities: this model (§IV). Price paths: '
+                'scenario logic anchored to the premium decomposition (§V), not '
+                'point forecasts — the fair-value anchor carries a wide error '
+                'band.</p>', unsafe_allow_html=True)
+
 # =========================================================================== #
-# II. THE WAR TODAY
+# II. THE TAPE
 # =========================================================================== #
-st.markdown("## II. The war today")
+st.markdown("## II. What the tape shows")
 st.markdown("""
 <p class="lede">
-The single most important series in this system: <b>how many ships pass the
-Strait of Hormuz each day.</b> Roughly a fifth of the world's oil transits this
-strait; the count below (IMF PortWatch, the same source Polymarket uses to
-settle its markets) is the war's pulse. Normal is ~75 calls/day; the red line
-(60) is the market's own definition of "back to normal."
+The controlling series for the entire complex is physical: <b>daily transit
+calls at the Strait of Hormuz</b> — roughly a fifth of global oil supply. It
+is also the settlement source for the prediction-market contracts we mark
+against, which makes it the cleanest bridge between the physical war and its
+price. Normal throughput is ~75 calls/day; 60 is the market's own resolution
+threshold for "normalized."
 </p>
 """, unsafe_allow_html=True)
 
@@ -432,27 +485,28 @@ with left:
     pw = pw[pw["obs_date"] >= "2026-01-01"].set_index("obs_date")
     chart_df = pd.DataFrame({"daily": pd.to_numeric(pw["n_total"], errors="coerce")})
     chart_df["7d MA"] = chart_df["daily"].rolling(7).mean()
-    chart_df["normal (60)"] = 60.0
+    chart_df["normalization threshold (60)"] = 60.0
     st.line_chart(chart_df, height=300)
-    st.caption(f"Latest {pw.index.max().date()} — PortWatch publishes ~5 days "
-               "late. Read the story left to right: normal traffic into early "
-               "March, the collapse when Iran closed the strait, four months "
-               "of near-zero, the partial reopening after the June deal — and "
-               "the re-closure when that deal died in July.")
+    st.markdown(f'<p class="source">Source: IMF PortWatch (satellite AIS), '
+                f'latest {pw.index.max().date()}; publishes with ~5-day lag. '
+                'The 2026 narrative left to right: normal into early March; '
+                'closure; four months near zero; partial reopening on the June '
+                'memorandum; re-closure on its collapse in July.</p>',
+                unsafe_allow_html=True)
 with right:
-    st.subheader("Weekly regime")
+    st.subheader("Weekly regime classification")
     lab = labels.copy()
     lab["week"] = pd.to_datetime(lab["week"]).dt.date
     show = lab[["week", "state", "frac"]].tail(12).iloc[::-1]
     show["frac"] = (show["frac"] * 100).round(0).astype(int).astype(str) + "%"
     show.columns = ["week", "state", "transits"]
     st.dataframe(show, hide_index=True, height=300)
-    st.caption("The war coded into six phases: S0 lull · S1 military "
-               "tit-for-tat · S2 chokepoint war · S3 Gulf-infrastructure war · "
-               "S4 all-out war · S5 deal. Everything downstream keys off this "
-               "classification.")
+    st.markdown('<p class="source">Six-state taxonomy: S0 lull · S1 reciprocal '
+                'strikes · S2 chokepoint interdiction · S3 Gulf-infrastructure '
+                'war · S4 general war · S5 settlement. Classified from transit '
+                'data plus the coded event stream.</p>', unsafe_allow_html=True)
 
-st.subheader("Is the war widening? (the S3 axis)")
+st.subheader("Lateral escalation: distinct third-country fronts per week")
 sc1, sc2 = st.columns([3, 2])
 with sc1:
     try:
@@ -460,28 +514,28 @@ with sc1:
         hs["week"] = pd.to_datetime(hs["week"])
         st.bar_chart(hs.set_index("week")[
             ["third_party_fronts", "proxy_active", "broad_hit"]], height=240)
-        st.caption("Distinct third-country targets struck per week — Kuwait, "
-                   "UAE, Saudi, Yemen fronts — excluding the belligerents "
-                   "themselves and pure maritime targets. This is Mearsheimer's "
-                   "'horizontal escalation' made countable.")
+        st.markdown('<p class="source">Source: LLM-coded event stream (frozen '
+                    'prompts; inter-coder rung agreement 82%). Counts distinct '
+                    'GCC/Iraq/Yemen targets; belligerent homelands and pure '
+                    'maritime targets excluded.</p>', unsafe_allow_html=True)
     except Exception as exc:  # noqa: BLE001
         st.warning(f"spread index unavailable: {exc}")
 with sc2:
     try:
         from src.features.horizontal_spread import spread_now
         sp = spread_now()
-        st.metric("Fronts this week", sp["third_party_fronts"],
+        st.metric("Active fronts this week", sp["third_party_fronts"],
                   sp["third_party_list"] or "—", delta_color="off")
-        st.metric("Trailing 4-week spread", f"{sp['trailing_4wk_index']:.1f}",
+        st.metric("Trailing 4-week intensity", f"{sp['trailing_4wk_index']:.1f}",
                   f"war average {sp['war_avg_index']:.1f}", delta_color="off")
         if sp["trailing_4wk_index"] > sp["war_avg_index"] * 1.3:
-            st.warning("**Widening.** Recent spread is well above the war's "
-                       "average — the July re-escalation went broader than any "
-                       "earlier phase, not just hotter.")
+            st.warning("**Lateral escalation confirmed** — the July phase is "
+                       "the broadest of the war, consistent with the framework's "
+                       "central prediction.")
     except Exception as exc:  # noqa: BLE001
         st.warning(f"spread reading unavailable: {exc}")
 
-with st.expander("Recent coded events — the raw material"):
+with st.expander("Exhibit: recent coded events (the primary source material)"):
     ev = read_latest("coded_events").copy()
     ev["date"] = pd.to_datetime(ev["date"])
     ev_show = ev.sort_values("date", ascending=False)[
@@ -489,63 +543,71 @@ with st.expander("Recent coded events — the raw material"):
     ].head(25)
     ev_show["date"] = ev_show["date"].dt.date
     st.dataframe(ev_show, hide_index=True, height=300)
-    st.caption("News headlines coded into structured events by an LLM under "
-               "frozen, versioned prompts (a second model agrees on the phase "
-               "coding 82% of the time). Hand-verified history through July 17 "
-               "is frozen; the live coder appends but never rewrites.")
 
 # =========================================================================== #
-# III. THE ENDURANCE ARGUMENT
+# III. STRATEGIC FRAMEWORK
 # =========================================================================== #
-st.markdown("## III. The endurance argument — why the forecast looks this way")
+st.markdown("## III. The strategic framework — Mearsheimer, stated formally")
 st.markdown("""
 <p class="lede">
-The forecast is built on an argument, not a curve-fit. The argument is John
-Mearsheimer's, and in plain terms it runs like this. <b>Bombing does not make
-countries surrender</b> — no state fighting for its survival has ever been
-coerced by airpower alone, and Iran is fighting for its survival while America
-is fighting for leverage, so Iran can absorb pain longer than Washington can
-sustain interest. <b>The bombing cannot be sustained anyway</b>: precision
-munitions and interceptors are being spent far faster than any factory can
-replace them. <b>Iran's counter-moves are cheap</b>: a drone that costs less
-than a car forces a defense that costs more than a house, and tankers,
-pipelines, and desalination plants cannot shoot back. And <b>neither government
-can afford to be seen quitting</b> — every strike is framed as retaliation, so
-ending the war requires one leader to accept a public humiliation that neither
-can survive politically. Put together: a war that cannot be won, cannot be
-sustained at full intensity, is cheapest to fight sideways, and has no
-dignified exit — so it <em>grinds on and spreads outward</em>.
+Our structural prior is John Mearsheimer's realist account of this war, and it
+is worth stating in the discipline's own terms, because each proposition is
+independently testable. The American campaign is an exercise in <b>coercion by
+punishment</b> — an attempt to compel policy change by imposing costs from the
+air without contesting control on the ground. The empirical record of
+punishment campaigns against consolidated states is poor, and the theoretical
+reason is the <b>balance of resolve</b>: Iran's survival interests are engaged
+and America's are not, so the target's cost tolerance systematically exceeds
+the coercer's political patience. Second, the United States lacks
+<b>escalation dominance</b> — the capacity to raise the adversary's costs
+faster than one's own at each rung of the ladder. Interceptor inventories
+deplete on a ~35-month production cycle against missile output an order of
+magnitude faster; the cost-exchange ratio of defense runs several multiples
+against the defender. Third, Iran's <b>counter-escalation options are
+asymmetric and lateral</b>: interdiction of commercial shipping and strikes on
+Gulf critical infrastructure impose regional and global costs at trivial
+marginal expense, along an axis where defense is thinnest. Fourth,
+<b>war-termination theory</b>: wars end when both parties' expectations
+converge on a settlement each leadership can survive domestically. Here,
+mutual framing of every strike as proportionate retaliation generates
+<b>audience costs</b> that keep the bargaining range empty — settlements can
+be reached (April, June) but not sustained, because compliance is read as
+capitulation. The structural prediction follows: <em>a punishment stalemate of
+extended duration, expanding laterally toward the coercee's cheapest options,
+punctuated by settlement episodes that fail</em>.
 </p>
 <p class="lede">
-Each of those claims is testable, and the bars below score them against what
-is actually happening. The average sets how heavily the thesis leans on the
-forecast. This cuts both ways: if a ceasefire holds or Iran starts conceding,
-the scores fall and the model drifts back toward the historical base rate —
-which, it should be said plainly, is against this thesis: <b>the median war
-between states ends in under five months</b>. This forecast is a deliberate,
-evidence-graded bet against that average.
+We hold this framework accountable rather than assume it. Each proposition is
+scored continuously against the observed record below; the average sets the
+framework's weight in the forecast. We note explicitly that the base rate cuts
+against us — <b>the median interstate war terminates inside five months</b> —
+so the persistence view is a deliberate, monitored deviation from the
+reference class, licensed only while the scores hold.
 </p>
 """, unsafe_allow_html=True)
 
 sc = scorecard_derived(lake_key)
 m1, m2, m3 = st.columns(3)
-m1.metric("Thesis fit", f"{sc['M']:.0%}",
-          "how Mearsheimer-shaped the war is right now", delta_color="off")
-m2.metric("Thesis weight in forecast", f"{sc['strength']:.1f} / 4",
-          "derived from the fit — not hand-set", delta_color="off")
+m1.metric("Framework fit", f"{sc['M']:.0%}",
+          "share of the thesis currently confirmed by data", delta_color="off")
+m2.metric("Framework weight", f"{sc['strength']:.1f} / 4",
+          "set mechanically by the fit — not discretionary", delta_color="off")
 _tot = 23.0 + 68.0 + sc["strength"] * 88.0
-m3.metric("What the forecast rests on",
-          f"{sc['strength']*88/_tot:.0%} thesis · {68/_tot:.0%} history · {23/_tot:.0%} this war",
-          "six analog conflicts supply the history", delta_color="off")
+m3.metric("Forecast composition",
+          f"{sc['strength']*88/_tot:.0%} framework · {68/_tot:.0%} historical analogs · {23/_tot:.0%} this war",
+          "analogs: Tanker War, 2019, 2020, 2024×2, 2025", delta_color="off")
 
 LABELS = {
-    "no_coercive_leverage": ("No coercive leverage",
-                             "US strikes are not producing Iranian concessions"),
-    "deals_decay": ("Deals decay", "both 2026 ceasefires collapsed in ~3 weeks"),
-    "asymmetric_escalation": ("Horizontal escalation",
-                              "the war spreads to cheap third-country targets"),
-    "face_lock": ("Face-lock", "neither side can afford to be seen backing down"),
-    "endurance_asymmetry": ("Endurance asymmetry", "Iran out-endures US patience"),
+    "no_coercive_leverage": ("Punishment is not coercing",
+                             "strike tempo has produced no Iranian concessions"),
+    "deals_decay": ("Settlements decay",
+                    "both 2026 ceasefires collapsed within ~3 weeks"),
+    "asymmetric_escalation": ("Lateral escalation dominates",
+                              "the war widens toward cheap third-country targets"),
+    "face_lock": ("Audience costs bind",
+                  "neither leadership can absorb visible capitulation"),
+    "endurance_asymmetry": ("Resolve favors the target",
+                            "Iran's endurance vs American political patience"),
 }
 for k, (label, gloss) in LABELS.items():
     s = sc["sub_scores"].get(k, 0.5)
@@ -555,52 +617,46 @@ for k, (label, gloss) in LABELS.items():
         st.progress(min(1.0, s))
         st.caption(f"{gloss} — {sc['details'].get(k, '')}")
 
-st.subheader("The physical mechanism: production, money, will")
+st.subheader("The material basis: production, reserves, political tolerance")
 ci = reg.get("covariates") or {}
 g1, g2, g3 = st.columns(3)
-g1.metric("Interceptor production gap",
+g1.metric("Interceptor production deficit",
           f"{ci.get('munitions', {}).get('production_gap', 0):.0f} : 1",
-          "Iran builds missiles ~15× faster than the US builds interceptors",
+          "Iranian missile output vs US interceptor output, per month",
           delta_color="off")
 try:
     from src.features.economic import readings as _econ_r
     _e = _econ_r()
-    g2.metric("Iran's fiscal runway", f"{_e['iran_runway_days']:.0f} days"
-              if _e.get("iran_runway_days") else "long",
-              "usable reserves ÷ blocked-export losses (IMF figure)",
+    g2.metric("Iranian fiscal runway", f"{_e['iran_runway_days']:.0f} days"
+              if _e.get("iran_runway_days") else "extended",
+              "usable FX reserves against interdicted export revenue (IMF)",
               delta_color="off")
-    g3.metric("US oil pain", f"{_e['us_oil_pain']:.0%}",
-              "political pressure from pump prices — none below ~$100 Brent",
+    g3.metric("US price-pain reading", f"{_e['us_oil_pain']:.0%}",
+              "approval-relevant gasoline passthrough begins near $100 Brent",
               delta_color="off")
 except Exception:  # noqa: BLE001
     pass
 st.markdown("""
 <p class="lede">
-These three numbers carry consequences beyond the war itself. Because an
-interceptor takes about three years to build, every missile fired in defense
-of the Gulf is gone for the duration — which rules out sustained all-out war,
-and quietly spends stock America also counts on for deterring China. Because
-Iran's cash runs out in roughly four months of blocked exports, economic
-gravity will eventually pull it toward a deal — but because neither side can
-afford to be seen quitting, the deal won't hold. That is not speculation; it
-is the April-to-July record, projected forward.
-</p>
-<p class="lede">
-Follow the chain one step further and it reaches ordinary life. Each
-deal-and-collapse cycle teaches traders to shrug at ceasefire headlines, so
-peace gets cheaper to announce and easier to abandon. And each week of
-interceptor drawdown leaves Gulf cities — whose drinking water comes from
-coastal desalination plants — a little less defended against the next cheap
-drone. That is why a strike on a desalination plant is this model's tripwire:
-it is the moment the war stops being about oil logistics and starts being
-about whether Kuwait City has water.
+<b>Second-order implications.</b> The production deficit makes Gulf air
+defense a wasting asset: every intercept is inventory unreplaceable inside the
+horizon, which caps sustained vertical escalation and — beyond this theater —
+draws down the same magazines that underwrite Pacific deterrence. The Iranian
+fiscal runway implies settlement pressure builds on a months-not-years clock;
+combined with binding audience costs, this reproduces the observed cycle:
+settlement, decay, re-escalation. <b>Third-order:</b> repetition of that cycle
+conditions markets to discount truce headlines (successively smaller deal
+rallies), while progressive interceptor depletion leaves desalination and
+power assets — potable water for major Gulf cities — increasingly exposed. A
+strike on desalination is accordingly our tripwire for regime reclassification
+rather than an incremental data point.
 </p>
 """, unsafe_allow_html=True)
 
 # =========================================================================== #
-# IV. THE FORECAST (P)
+# IV. BASE-CASE PATH
 # =========================================================================== #
-st.markdown("## IV. The forecast — where the war goes from here")
+st.markdown("## IV. The base-case path")
 lcol, rcol = st.columns([3, 2])
 with lcol:
     rows = []
@@ -609,54 +665,79 @@ with lcol:
             rows.append({"horizon": h, "state": f"{s} {STATE_NAMES[s]}", "prob": p})
     fdf = pd.DataFrame(rows).pivot(index="state", columns="horizon", values="prob")
     st.dataframe(fdf[["2w", "1m", "3m", "6m"]].style.format("{:.0%}"), height=260)
-    st.caption("Probability of being in each phase at each horizon. Read the 3m "
-               "column top to bottom: the mass sits in the chokepoint/"
-               "infrastructure grind.")
+    st.markdown('<p class="source">State-occupancy probabilities by horizon. '
+                'The 3-month mass concentrates in S2/S3 — the interdiction-and-'
+                'infrastructure grind.</p>', unsafe_allow_html=True)
 with rcol:
     tm = reg["touch"]
-    st.metric("Odds of touching all-out war",
-              f"{tm.get('p_visit_s4_3m', 0):.0%}",
-              f"within 3 months — but only {f3[4]:.0%} that it lasts",
+    st.metric("P(touch S4 within 3m)", f"{tm.get('p_visit_s4_3m', 0):.0%}",
+              f"occupancy at 3m only {f3[4]:.0%} — excursions, not residence",
               delta_color="off")
-    st.metric("Odds of a ceasefire attempt", f"{tm.get('p_visit_s5_3m', 0):.0%}",
-              f"within 3 months — but only {f3[5]:.0%} that it holds",
-              delta_color="off")
+    st.metric("P(settlement episode within 3m)",
+              f"{tm.get('p_visit_s5_3m', 0):.0%}",
+              f"holding at 3m only {f3[5]:.0%}", delta_color="off")
     band = tm.get("race_band")
-    st.metric("All-out war arrives before a deal",
+    st.metric("P(S4 precedes settlement)",
               f"{band['lo']:.0%}–{band['hi']:.0%}" if band else "n/a",
-              "a range, honestly — this number resists precision",
+              "reported as an interval; the point estimate is not robust",
               delta_color="off")
 st.markdown("""
 <p class="lede">
-The crucial distinction is <em>visiting versus staying</em>. The model gives a
-real chance of touching all-out war briefly — the war has already done it
-twice, in the opening decapitation campaign and the March strikes — but almost
-no chance of staying there, because §III's arithmetic makes maximum tempo
-unsustainable. Same asymmetry for peace: deal <b>episodes</b> are likelier
-than not within months, but deals <b>holding</b> is rare. If you remember one
-thing from this page: escalation spikes and ceasefires are both, on this
-model's read, <em>episodes inside a grind</em> — not endings.
+The operative distinction is <b>touch versus occupancy</b>. The model assigns
+material probability to brief S4 excursions — the war has produced two — and
+minimal probability to sustained S4 residence, because the material
+constraints in §III bind at maximum tempo. The same asymmetry governs
+settlement: episodes are probable, durability is not. For positioning, both
+tails are therefore <em>trading events within a persistent regime</em> — the
+escalation tail is monetized into strength, the settlement tail is hedged and
+then faded — rather than regime changes to re-underwrite.
 </p>
 """, unsafe_allow_html=True)
 
 # =========================================================================== #
-# V. THE MARKET (Q)
+# V. OIL
 # =========================================================================== #
-st.markdown("## V. What the market believes")
-st.markdown("""
-<p class="lede">
-Four independent windows into the market's mind. Prediction markets state
-reopening odds directly. The futures curve reveals how long traders expect
-disruption to last (today's barrel trading far above next year's = "this is
-temporary"). Options prices imply the odds of extreme moves. And the premium
-decomposition asks how much of today's oil price is war at all — versus
-ordinary supply and demand.
-</p>
-""", unsafe_allow_html=True)
+st.markdown("## V. Oil: spot, curve, and the geopolitical premium")
+
+st.subheader("Brent spot against the fundamentals anchor")
+try:
+    bh = brent_spot_history(lake_key)
+    bchart = pd.DataFrame({"Brent spot": bh["brent"]})
+    if fair is not None:
+        bchart["fundamentals fair value"] = fair
+    st.line_chart(bchart, height=280)
+    st.markdown(f'<p class="source">Source: FRED series DCOILBRENTEU (Europe '
+                f'Brent spot, latest ${spot_fred:.0f}). The fair-value line '
+                f'(${fair:.0f}) is a pre-war OLS of Brent on copper, the broad '
+                'dollar, 10y breakevens, real yields, and the S&amp;P (Jan-2024 '
+                'to Jan-2026, R²≈0.7), evaluated at today\'s macro readings — '
+                'i.e., our estimate of the price absent the war, which is low '
+                'because copper says demand is soft. The vertical gap is the '
+                'geopolitical premium. Treat the anchor as a decomposition '
+                'device with a wide error band, not a target. Note: the front '
+                'ICE future (§ curve below) trades a few dollars above FRED '
+                'spot; each module is internally consistent.</p>',
+                unsafe_allow_html=True)
+except Exception as exc:  # noqa: BLE001
+    st.warning(f"Brent history unavailable: {exc}")
 
 qa, qb = st.columns(2)
 with qa:
-    st.subheader("Prediction markets — reopening odds")
+    st.subheader("The forward curve: how long is 'temporary'?")
+    try:
+        fc = read_latest("futures_curve")
+        bzl = fc[fc["root"] == "BZ"].sort_values("contract_month")
+        st.line_chart(bzl.set_index("contract_month")["close"], height=220)
+        spread6 = float(bzl["close"].iloc[0] - bzl["close"].iloc[min(6, len(bzl) - 1)])
+        st.markdown(f'<p class="source">Source: ICE Brent futures via Yahoo. '
+                    f'Backwardation of ${spread6:.0f} front-to-6M prices the '
+                    'disruption as substantially resolved within the year — '
+                    'the single clearest expression of the duration view we '
+                    'fade.</p>', unsafe_allow_html=True)
+    except Exception as exc:  # noqa: BLE001
+        st.warning(f"curve unavailable: {exc}")
+with qb:
+    st.subheader("Prediction markets: reopening odds by date")
     try:
         pm = read_latest("predmkt_panel")
         hz = pm[pm["family"] == "hormuz_normalize"].copy()
@@ -665,59 +746,61 @@ with qa:
         cdf = hz[["end_date", "yes_prob"]].rename(
             columns={"end_date": "by", "yes_prob": "P(normalized)"})
         st.line_chart(cdf.set_index("by")["P(normalized)"], height=220)
-        st.caption("Millions of dollars of real-money volume. The near months "
-                   "collapsed to ~zero weeks ago — the market has fully "
-                   "conceded that the strait stays shut near-term.")
+        st.markdown('<p class="source">Source: Polymarket (Gamma API); '
+                    'multi-million-dollar volume in the December contract; '
+                    'settles on the same PortWatch series as §II.</p>',
+                    unsafe_allow_html=True)
     except Exception as exc:  # noqa: BLE001
         st.warning(f"prediction markets unavailable: {exc}")
-with qb:
-    st.subheader("Futures curve — how long is 'temporary'?")
-    try:
-        fc = read_latest("futures_curve")
-        bzl = fc[fc["root"] == "BZ"].sort_values("contract_month")
-        st.line_chart(bzl.set_index("contract_month")["close"], height=220)
-        spread6 = float(bzl["close"].iloc[0] - bzl["close"].iloc[min(6, len(bzl) - 1)])
-        st.caption(f"Brent by delivery month. The steep downslope "
-                   f"(front-to-6M {spread6:+.0f}) says the market prices this "
-                   "disruption as mostly gone within a year — the single "
-                   "clearest thing this model disagrees with.")
-    except Exception as exc:  # noqa: BLE001
-        st.warning(f"curve unavailable: {exc}")
 
-st.subheader("How much of the oil price is war — and which war?")
+st.subheader("Premium decomposition: which war is priced, where")
 try:
     fd = read_latest("fundamentals").iloc[-1]
     pr = read_latest("premia").iloc[-1]
     q1, q2, q3, q4 = st.columns(4)
-    q1.metric("War premium", f"${fd['war_premium']:+.0f}",
-              f"Brent trades at ${fd['brent_fred']:.0f}; without the war it "
-              f"would be near ${fd['fundamentals_fair']:.0f}", delta_color="off")
-    q2.metric("Still priced a year out", f"{fd['frac_premium_persisting']:.0%}"
-              if pd.notna(fd.get("frac_premium_persisting")) else "n/a",
-              "share of the premium the futures curve keeps at 12 months",
+    q1.metric("Geopolitical premium", f"${fd['war_premium']:+.0f}/bbl",
+              f"spot ${fd['brent_fred']:.0f} against fair ${fd['fundamentals_fair']:.0f}",
               delta_color="off")
-    q3.metric("European gas premium", f"{pr['gas_war_premium_proxy']:+.0%}",
-              "the only market pricing Gulf-infrastructure risk", delta_color="off")
-    q4.metric("Gold since the war began", f"{pr['gold_since_war']:+.0%}",
-              "falling gold = an oil event, not a world event", delta_color="off")
-    st.caption("Fair value comes from oil's pre-war relationship to copper, the "
-               "dollar, rates, and equities — what oil *would* cost in this "
-               "economy with no war. The gap is the war premium. Copper matters "
-               "because it shares oil's demand drivers but not its war: it is "
-               "the counterfactual twin. Note gold: in a war the textbook says "
-               "buy gold, yet it has *fallen* — the market classifies this as a "
-               "supply disruption, not a systemic crisis. If gold ever starts "
-               "rising *with* escalation, that re-classification is the single "
-               "scariest signal on this page.")
+    q2.metric("Retained at 12M", f"{fd['frac_premium_persisting']:.0%}"
+              if pd.notna(fd.get("frac_premium_persisting")) else "n/a",
+              "balance priced to decay along the curve", delta_color="off")
+    q3.metric("TTF war premium", f"{pr['gas_war_premium_proxy']:+.0%}",
+              "European gas — the only venue pricing the lateral axis",
+              delta_color="off")
+    q4.metric("Gold since outbreak", f"{pr['gold_since_war']:+.0%}",
+              "declining: classified as a supply event, not systemic",
+              delta_color="off")
+    st.markdown('<p class="source">Sources: FRED + model estimates; ICE TTF and '
+                'Henry Hub via Yahoo vs pre-war means; COMEX gold. Copper '
+                'functions as the demand counterfactual — it shares oil\'s '
+                'macro drivers but not its war exposure. A gold rally '
+                'concurrent with escalation would mark reclassification from '
+                'supply-local to systemic and is monitored as a tripwire '
+                '(§VII).</p>', unsafe_allow_html=True)
 except Exception as exc:  # noqa: BLE001
     st.info(f"premium decomposition unavailable: {exc}")
 
-# =========================================================================== #
-# VI. THE DIVERGENCE — and what the positions mean
-# =========================================================================== #
-st.markdown("## VI. The divergence — model vs market, and the positions")
+try:
+    rnd = read_latest("rnd")
+    r = rnd[rnd["symbol"] == "USO"].iloc[-1]
+    o1, o2, o3 = st.columns(3)
+    o1.metric("Options: P(≈Brent > 100)", f"{r['p_up16']:.0%}")
+    o2.metric("P(≈Brent < 75)", f"{r['p_dn13']:.0%}")
+    o3.metric("At-the-money implied vol", f"{r['atm_iv']:.0%}")
+    st.markdown('<p class="source">Source: USO/BNO option chains (delayed), '
+                'Breeden–Litzenberger density; levels approximate, changes '
+                'informative. The downside tail trades rich to the upside — '
+                'the options market pays for durable resolution.</p>',
+                unsafe_allow_html=True)
+except Exception:  # noqa: BLE001
+    pass
 
-st.subheader("Head-to-head on the question both sides price")
+# =========================================================================== #
+# VI. VARIANT VIEW & POSITIONING
+# =========================================================================== #
+st.markdown("## VI. The variant view, quantified — and positioning")
+
+st.subheader("Our probabilities against consensus, same contract terms")
 try:
     pm = read_latest("predmkt_panel")
     hz = pm[pm["family"] == "hormuz_normalize"].copy()
@@ -727,32 +810,28 @@ try:
         sub = hz[hz["end_date"].astype(str).str.startswith(by[:7])]
         mkt = float(sub.sort_values("volume", ascending=False).iloc[0]["yes_prob"]) \
             if len(sub) else None
-        rows.append({"strait normal by": by, "model P": f"{mdl:.0%}",
-                     "market Q": f"{mkt:.0%}" if mkt is not None else "—",
-                     "P − Q": f"{mdl - mkt:+.0%}" if mkt is not None else "—"})
+        rows.append({"Hormuz normal by": by, "our estimate": f"{mdl:.0%}",
+                     "consensus (Polymarket)": f"{mkt:.0%}" if mkt is not None else "—",
+                     "variant": f"{mdl - mkt:+.0%}" if mkt is not None else "—"})
     st.dataframe(pd.DataFrame(rows), hide_index=True)
-    st.caption("Positive P−Q: the model is *more* optimistic about reopening "
-               "than the market at that date. These are not hypotheticals — "
-               "each row is a timestamped call in the public ledger (§VII), "
-               "graded automatically when the date passes.")
+    st.markdown('<p class="source">Identical resolution criteria on both '
+                'columns (PortWatch 7-day average ≥ 60). Every row is a '
+                'standing entry in the graded ledger (§VIII).</p>',
+                unsafe_allow_html=True)
 except Exception as exc:  # noqa: BLE001
-    st.info(f"head-to-head unavailable: {exc}")
+    st.info(f"variant table unavailable: {exc}")
 
 st.markdown("""
 <div class="keybox">
-<b>How to read the positions below.</b> 🟢 <b>LONG</b> = the position profits
-if escalation/persistence exceeds what the market has priced (e.g. owning oil
-exposure or upside options). 🔴 <b>SHORT</b> = profits if resolution comes
-faster or risk premium deflates. ⚪ <b>FLAT</b> = the model sees no edge —
-which is a conclusion, not an absence of one. <b>Confidence</b> measures how
-much evidence backs the signal's <em>logic</em> (did it survive robustness
-tests? how much data supports it?), not the odds of profit — a
-<b>low-confidence</b> signal is a hypothesis to watch, a <b>high-confidence</b>
-one has survived deliberate attempts to break it. None of them are sized
-positions, and the standing rule is that any escalation-long position is
-paired with cheap deal-shock protection, because peace arrives overnight here
-(April 7 went from "a whole civilization will die tonight" to a ceasefire in
-hours).
+<b>Reading the signal sleeve.</b> 🟢 <b>LONG</b>: the expression profits if
+persistence/escalation exceeds market pricing. 🔴 <b>SHORT</b>: profits if
+resolution arrives faster than priced. ⚪ <b>FLAT</b>: no exploitable variant —
+itself a finding. <b>Conviction</b> grades the evidential support for the
+signal's logic (robustness-test survival, sample depth), not expected return;
+low conviction means monitor, never size. House rule: every escalation-long
+carries deal-shock protection, because settlement risk here is an overnight
+gap — April 7 repriced from maximal escalation rhetoric to a ceasefire inside
+a session.
 </div>
 """, unsafe_allow_html=True)
 
@@ -761,7 +840,7 @@ try:
     dirmap = {-1: "🔴 SHORT", 0: "⚪ FLAT", 1: "🟢 LONG"}
     for s in compute_all():
         with st.expander(f"{dirmap[s['direction']]}  **{s['signal']}**  "
-                         f"(confidence: {s['confidence']})", expanded=False):
+                         f"(conviction: {s['confidence']})", expanded=False):
             st.write(s["rationale"])
             for k, v in (s["value"] or {}).items():
                 if isinstance(v, dict):
@@ -771,7 +850,7 @@ try:
 except Exception as exc:  # noqa: BLE001
     st.error(f"signal computation failed: {exc}")
 
-st.subheader("The stress test that disciplines everything")
+st.subheader("Settlement-shock stress (the book's governing risk)")
 try:
     from src.alpha.stress import WINDOWS, _window_moves, book_pnl
     rows = []
@@ -780,30 +859,49 @@ try:
         if not m:
             continue
         pnl = book_pnl(m)
-        rows.append({"scenario (this war's own tapes)": name,
-                     "brent": f"{m['brent']:+.1%}", "tankers": f"{m['tankers']:+.1%}",
+        rows.append({"scenario (replayed from 2026 tapes)": name,
+                     "Brent": f"{m['brent']:+.1%}", "tankers": f"{m['tankers']:+.1%}",
                      "hedged book": f"{pnl['TOTAL']:+.2%}"})
     st.dataframe(pd.DataFrame(rows), hide_index=True)
-    st.caption("A stylized escalation-long book replayed against the war's own "
-               "deal windows. The April tape costs an *unhedged* book ~-2.3%; "
-               "with the deal hedge it loses ~-0.5%. That difference is why the "
-               "hedge is mandatory, not optional: the biggest risk in being "
-               "long this war is peace, however briefly it lasts.")
+    st.markdown('<p class="source">A stylized persistence book replayed '
+                'against the war\'s own settlement windows. Unhedged, the '
+                'April tape costs ~-2.3%; hedged, ~-0.5%. The hedge is '
+                'structural, not tactical.</p>', unsafe_allow_html=True)
 except Exception as exc:  # noqa: BLE001
     st.error(f"stress unavailable: {exc}")
 
 # =========================================================================== #
-# VII. TRUST
+# VII. CATALYSTS & TRIPWIRES
 # =========================================================================== #
-st.markdown("## VII. Why believe any of this — the track record")
+st.markdown("## VII. Catalysts and tripwires")
 st.markdown("""
 <p class="lede">
-A model that never risks being wrong is an opinion. This one publishes
-timestamped, falsifiable calls with explicit resolution criteria, graded
-automatically every day by CI against the same data sources the markets
-settle on. The Brier score (0 = clairvoyant, 0.25 = coin-flipping) accumulates
-below as calls resolve — and the ledger is append-only: no call, once made,
-can be edited or quietly deleted.
+<b>Upside catalysts for the persistence view:</b> a strike on Gulf
+desalination or power (regime reclassification toward sustained S3 — our
+primary tripwire); interceptor-rationing reports from Gulf capitals;
+Polymarket December odds fading below ~45%. <b>Falsifiers:</b> a ceasefire
+surviving past the six-week hazard peak identified in the ceasefire
+literature; transits holding above 60 for two consecutive weeks (grades our
+ledger entries against us); the scorecard's settlement-decay or audience-cost
+scores breaking below 0.5, which mechanically de-weights the framework.
+<b>Systemic reclassification:</b> gold rallying concurrent with escalation —
+the market abandoning its supply-local read — would dominate every other
+signal on this page and warrants immediate de-risking of carry expressions.
+</p>
+""", unsafe_allow_html=True)
+
+# =========================================================================== #
+# VIII. RISKS, TRACK RECORD, METHODOLOGY
+# =========================================================================== #
+st.markdown("## VIII. Risks to our view — and the graded record")
+st.markdown("""
+<p class="lede">
+The honest core: this is one war, roughly twenty-four coded weeks. The
+forecast therefore leans on the framework and on six historical analogs, and
+§III displays exactly how much. Our published calls are the discipline —
+timestamped, resolution criteria fixed in advance, machine-graded daily
+against the same sources the markets settle on, Brier-scored as they resolve.
+The ledger is append-only: no entry can be edited or withdrawn after commit.
 </p>
 """, unsafe_allow_html=True)
 
@@ -814,7 +912,7 @@ try:
     st.markdown(f"**{s['n_calls']} public calls** since {s['first_call']} — "
                 f"{s['n_open']} open, {s['n_resolved']} resolved"
                 + (f", **Brier {s['brier']:.3f}**" if s["brier"] is not None else "")
-                + " · [ledger on GitHub](https://github.com/xiajason6-web/GeoMacro3/blob/main/calls/ledger.yaml)")
+                + " · [ledger](https://github.com/xiajason6-web/GeoMacro3/blob/main/calls/ledger.yaml)")
     rows = [{"made": c["made"], "p": f"{c['p']:.0%}", "claim": c["claim"],
              "status": c.get("outcome", "open")} for c in doc["calls"]]
     st.dataframe(pd.DataFrame(rows), hide_index=True,
@@ -829,20 +927,19 @@ with st.expander("Data status (cached 1h)"):
         icon = "🟢" if "FAIL" not in str(v) else "🔴"
         cols[i % 3].caption(f"{icon} **{k}**: {v}")
 
-with st.expander("Honest limitations — read before believing any number"):
+with st.expander("Methodology notes and standing limitations"):
     st.markdown("""
-1. **One war, ~24 observed weeks.** The forecast leans on the thesis and on
-   six analog conflicts, and says exactly how much (§III).
-2. **Market data is free and delayed** — ETF options, ~5-day transit lag.
-   Trust day-over-day changes more than absolute levels.
-3. **The model and Polymarket share a data source** (PortWatch), so part of any
-   gap can be timing, not disagreement — the pipeline decomposes this before
-   calling anything an edge.
-4. **Deals decay** is a thesis claim with n=2 (April, June). If a ceasefire
-   holds, the scorecard falls and the whole forecast softens on its own.
-
-Every judgment knob in the model is registered, tagged (founded / defensible /
-arbitrary), and adversarially perturbed ±50% —
-[ASSUMPTIONS.md](https://github.com/xiajason6-web/GeoMacro3/blob/main/ASSUMPTIONS.md).
-All §I conclusions survive that sweep. **Not financial advice.**
+- **Sample**: n=1 war, ~24 coded weeks; posterior composition disclosed in §III.
+- **Market data**: free/delayed feeds (ETF options; ~5-day transit lag) — we
+  weight changes over levels throughout.
+- **Shared settlement source**: our model and Polymarket both read PortWatch;
+  the pipeline decomposes timing overlap from genuine disagreement before any
+  variant is claimed.
+- **Framework risk**: the persistence view is a monitored bet against the
+  interstate-war base rate (median duration < 5 months); the scorecard is the
+  monitoring instrument and de-weights the framework on contrary evidence.
+- Every judgment parameter is registered and tagged
+  ([ASSUMPTIONS.md](https://github.com/xiajason6-web/GeoMacro3/blob/main/ASSUMPTIONS.md));
+  headline conclusions survive ±50% perturbation of all of them. **Not
+  financial advice.**
 """)
