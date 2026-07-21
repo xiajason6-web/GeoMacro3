@@ -117,10 +117,18 @@ def _history_panel() -> pd.DataFrame:
                       threads=False)["Close"]
     rets = raw.pct_change(fill_method=None)
     out = pd.DataFrame(index=rets.index)
+    spx = rets.get("^GSPC")
     for b, tks in BUCKETS.items():
         cols = [t for t in tks if t in rets]
         if cols:
-            out[b] = rets[cols].mean(axis=1) - rets.get("^GSPC", 0)  # abnormal
+            bucket = rets[cols].mean(axis=1)
+            # BETA-adjusted abnormal returns (not naive 1x subtraction):
+            # beta estimated over the full sample vs the S&P, so a high-beta
+            # bucket isn't credited with 'war alpha' that is just market beta.
+            valid = pd.concat([bucket, spx], axis=1).dropna()
+            beta = float(np.polyfit(valid.iloc[:, 1], valid.iloc[:, 0], 1)[0]) \
+                if len(valid) > 60 else 1.0
+            out[b] = bucket - beta * spx
     out["brent"] = rets.get("BZ=F")
     out.index = pd.to_datetime(out.index).tz_localize(None)
     return out

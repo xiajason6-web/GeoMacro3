@@ -81,6 +81,7 @@ def posterior_matrix(
         post, cov_extra = apply_cov(post)
         cov_info.update(cov_extra)
     cov_info["analog_mass"] = float(analog.sum())
+    cov_info["posterior_counts"] = post  # Dirichlet params, for credible bands
     T = post / post.sum(axis=1, keepdims=True)
     return T, prior, counts, cov_info
 
@@ -148,6 +149,26 @@ def touch_probabilities(T: np.ndarray, p0: np.ndarray, max_weeks: int = 52) -> d
     }
 
 
+def forecast_bands(post: np.ndarray, p0: np.ndarray, weeks: int = 13,
+                   n_samples: int = 400) -> dict:
+    """80% credible intervals on the horizon forecast by sampling transition
+    matrices row-wise from the Dirichlet posterior (params = the modulated
+    pseudo-counts) and propagating each draw. Parameter uncertainty only —
+    classifier and structural uncertainty are additional (see ASSUMPTIONS.md)."""
+    rng = np.random.default_rng(RNG_SEED + 7)
+    draws = np.empty((n_samples, 6))
+    for i in range(n_samples):
+        Ts = np.vstack([rng.dirichlet(np.maximum(row, 1e-6)) for row in post])
+        draws[i] = p0 @ np.linalg.matrix_power(Ts, weeks)
+    lo, hi = np.percentile(draws, [10, 90], axis=0)
+    s2plus = draws[:, 2:5].sum(axis=1)
+    return {
+        "per_state_lo": lo.tolist(), "per_state_hi": hi.tolist(),
+        "s2plus_lo": float(np.percentile(s2plus, 10)),
+        "s2plus_hi": float(np.percentile(s2plus, 90)),
+    }
+
+
 def run(prior_strength: float | None = None, use_covariates: bool = True,
         use_analogs: bool = True) -> dict:
     """use_covariates defaults True (M9 endurance layer); use_analogs defaults
@@ -160,6 +181,8 @@ def run(prior_strength: float | None = None, use_covariates: bool = True,
 
     fc = horizon_forecast(T, p0)
     touch = touch_probabilities(T, p0)
+    post = cov_info.get("posterior_counts")
+    bands_3m = forecast_bands(post, p0) if post is not None else None
     analog_mass = cov_info.get("analog_mass", 0.0)
     total_mass = counts.sum() + prior.sum() + analog_mass
     data_weight = counts.sum() / total_mass
@@ -173,6 +196,7 @@ def run(prior_strength: float | None = None, use_covariates: bool = True,
         "labels": labels, "T": T, "prior": prior, "counts": counts,
         "p0": p0, "forecasts": fc, "touch": touch, "data_weight": data_weight,
         "covariates": cov_info, "use_covariates": use_covariates,
+        "bands_3m": bands_3m,
     }
 
 

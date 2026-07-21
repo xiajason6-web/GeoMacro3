@@ -99,13 +99,17 @@ def a3_novelty_drift() -> dict:
                   "novel_event_in_last_7d": recent_novel,
                   "recent_novel_events": novel_list if recent_novel else []},
         "direction": 1 if (recent_novel and (drift_edge or 0) > 0.02) else 0,
-        "confidence": "medium" if (drift_edge or 0) > 0.04 else "low",
+        "confidence": "low",  # permutation test p~0.44: the novel-vs-repeated
+        #                        gap does not reach significance — parameter
+        #                        robustness is not statistical power
         "rationale": "Backfill shows +20d abnormal Brent after first-of-kind "
                      "events exceeds repeated-pattern events (+16% vs +10%) — "
                      "underreaction to novel rungs. Long oil/tankers 5-20d "
                      "after a novelty flag fires.",
         "caveats": "Overlapping windows in a dense event stream inflate the "
-                   "apparent edge; n~20 per bucket.",
+                   "apparent edge; n~20 per bucket; label-permutation test "
+                   "p≈0.44 — NOT significant. Survived the parameter grid, "
+                   "failed the significance test: monitor, never size.",
     }
 
 

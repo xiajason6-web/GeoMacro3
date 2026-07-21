@@ -88,6 +88,28 @@ def abnormal_returns(events: pd.DataFrame, rets: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def permutation_pvalue(ar: pd.DataFrame, window: int = 20,
+                       n_perm: int = 4000) -> float | None:
+    """Label-permutation test on the novel-vs-repeated abnormal-return gap.
+    Shuffling 'novel' across events respects the (overlapping-window) return
+    structure, which parametric tests would not — this is the honest
+    significance test available at this n."""
+    sub = ar[ar["window"] == window].dropna(subset=["abn_brent"])
+    if sub["novel"].nunique() < 2:
+        return None
+    obs = sub[sub["novel"]]["abn_brent"].mean() - sub[~sub["novel"]]["abn_brent"].mean()
+    rng = np.random.default_rng(20260721)
+    vals = sub["abn_brent"].values
+    labels = sub["novel"].values.copy()
+    count = 0
+    for _ in range(n_perm):
+        rng.shuffle(labels)
+        diff = vals[labels].mean() - vals[~labels].mean()
+        if abs(diff) >= abs(obs):
+            count += 1
+    return count / n_perm
+
+
 def summarize(ar: pd.DataFrame) -> None:
     print("[event_study] mean abnormal Brent return by novelty (n in parens):")
     for w in WINDOWS:
@@ -96,8 +118,16 @@ def summarize(ar: pd.DataFrame) -> None:
         rep = sub[~sub["novel"]]["abn_brent"]
         print(f"  +{w:>2}d: novel {nov.mean():+.2%} (n={len(nov)})   "
               f"repeated {rep.mean():+.2%} (n={len(rep)})")
+    p = permutation_pvalue(ar)
+    if p is not None:
+        verdict = ("does not reach conventional significance"
+                   if p >= 0.05 else "significant at 5%")
+        print(f"[event_study] permutation test (novel-vs-repeated, +20d): "
+              f"p = {p:.2f} — {verdict}. The drift is suggestive, not proven; "
+              "A3's conviction grade should reflect this.")
     print("[event_study] caveat: n is tiny and windows overlap during dense "
-          "strike sequences — treat as descriptive, not inferential.")
+          "strike sequences — permutation respects that structure but cannot "
+          "manufacture power.")
 
 
 def main() -> int:

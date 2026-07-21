@@ -95,10 +95,21 @@ def decompose() -> dict:
     X = np.column_stack([np.ones(len(pre))] + [pre[d].values for d in DRIVERS])
     y = pre["brent"].values
     coef, *_ = np.linalg.lstsq(X, y, rcond=None)
-    r2 = 1 - np.sum((y - X @ coef) ** 2) / np.sum((y - y.mean()) ** 2)
-
+    resid = y - X @ coef
+    r2 = 1 - np.sum(resid ** 2) / np.sum((y - y.mean()) ** 2)
+    # Prediction interval on fair value: residual sd, widened for parameter
+    # uncertainty at the extrapolation point (x'(X'X)^-1 x leverage term).
+    # Daily residuals are autocorrelated, so this UNDERSTATES the true band —
+    # stated, not hidden; it still kills the false precision of a bare point.
+    dof = max(len(pre) - X.shape[1], 1)
+    s2 = float(np.sum(resid ** 2) / dof)
     latest = df.iloc[-1]
     x_now = np.array([1.0] + [latest[d] for d in DRIVERS])
+    XtX_inv = np.linalg.pinv(X.T @ X)
+    lev = float(x_now @ XtX_inv @ x_now)
+    pred_se = float(np.sqrt(s2 * (1.0 + lev)))
+    band = 2.0 * pred_se  # ~95% under iid normal; wider in truth (autocorr)
+
     fair = float(x_now @ coef)
     actual = float(latest["brent"])
     premium = actual - fair
@@ -106,7 +117,8 @@ def decompose() -> dict:
     out = {
         "as_of": str(df.index[-1].date()),
         "brent_fred": actual, "fundamentals_fair": fair,
-        "war_premium": premium, "prewar_r2": float(r2),
+        "war_premium": premium, "premium_band": band,
+        "prewar_r2": float(r2),
         "coef": {"intercept": float(coef[0]),
                  **{d: float(c) for d, c in zip(DRIVERS, coef[1:])}},
         "macro_now": {d: float(latest[d]) for d in DRIVERS},

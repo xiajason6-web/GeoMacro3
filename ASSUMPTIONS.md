@@ -248,3 +248,28 @@ sizes, not hazard levels — narrowing it needs event-study elasticities (#5).
 
 Every actionable grounding item is done; the remaining two have explicit
 reopen-triggers. The register is maintenance-mode: new knobs enter with a tag.
+
+## Rigor pass (2026-07-21) — uncertainty quantification end-to-end
+
+- **War premium now carries a prediction interval:** $26 ± $10 (pre-war OLS
+  residual + leverage term at the extrapolation point; understated — daily
+  residuals autocorrelated — but kills the bare-point false precision).
+- **Transition forecasts carry 80% credible intervals** (Dirichlet posterior
+  row sampling, 400 draws): P(S2+ @3m) = 57% [43%, 71%]; S3 [16%, 35%];
+  S4 [1%, 6%]; S5 [3%, 11%]. Parameter uncertainty only — classifier and
+  structural uncertainty are additional.
+- **Inter-coder agreement chance-corrected:** rung κ = 0.72 ("substantial",
+  Landis-Koch), target-type κ = 0.42 ("moderate"). Quote κ, not the raw 82%.
+- **A3 DOWNGRADED:** label-permutation test on the novel-vs-repeated drift
+  gives p ≈ 0.44 — not significant. A3 survived the ±50% parameter grid but
+  fails the significance hurdle; these are different tests and clearing one is
+  not clearing the other. Confidence forced to "low" in signals.py.
+- **Variant tilts stated as within-noise:** all five bands include zero; the
+  tilts rank buckets, they do not size positions (stated on the dashboard).
+- **Triangulation legs now beta-adjusted** (per-bucket S&P beta, not naive 1×
+  subtraction).
+- **Scorecard circularity disclosed in the note itself** (§III): structured
+  judgment grading structured judgment; the independent check is
+  empirical-Bayes convergence (~3 vs 3.2) — convergence, not proof.
+- Remaining below-scratch items requiring resources: EIA key (user, free),
+  CME settlement data (paid).

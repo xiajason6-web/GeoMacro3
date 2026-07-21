@@ -401,15 +401,21 @@ except Exception:  # noqa: BLE001
     mkt_dec = None
 
 k1, k2, k3, k4, k5 = st.columns(5)
+_b3 = reg.get("bands_3m")
 k1.metric("Base case: the grind persists", f"{p_s2plus:.0%}",
-          "probability the strait remains disrupted at 3 months", delta_color="off")
+          (f"80% credible interval {_b3['s2plus_lo']:.0%}–{_b3['s2plus_hi']:.0%}, "
+           "parameter uncertainty only") if _b3 else
+          "probability the strait remains disrupted at 3 months",
+          delta_color="off")
 k2.metric("Shape of the risk", f"{f3[3]:.0%} vs {f3[4]:.0%}",
           "Gulf-infrastructure widening vs all-out escalation", delta_color="off")
 k3.metric("Ceasefire risk is episodic", f"{t.get('p_visit_s5_3m', 0):.0%}",
           f"probability of a truce attempt; {f3[5]:.0%} that it durably holds",
           delta_color="off")
 if war_prem is not None:
-    k4.metric("Geopolitical premium in Brent", f"${war_prem:+.0f}/bbl",
+    _pb = float(fd_h.get("premium_band", 0) or 0)
+    k4.metric("Geopolitical premium in Brent",
+              f"${war_prem:+.0f} ± {_pb:.0f}/bbl" if _pb else f"${war_prem:+.0f}/bbl",
               f"{kept:.0%} retained by the 12M contract" if kept else "",
               delta_color="off")
 if mdl_dec is not None and mkt_dec is not None:
@@ -521,7 +527,8 @@ with sc1:
         st.bar_chart(hs.set_index("week")[
             ["third_party_fronts", "proxy_active", "broad_hit"]], height=240)
         st.markdown('<p class="source">Source: LLM-coded event stream (frozen '
-                    'prompts; inter-coder rung agreement 82%). Counts distinct '
+                    'prompts; inter-coder rung agreement 82%, chance-corrected κ 0.72, '
+                    '"substantial" on the Landis-Koch scale). Counts distinct '
                     'GCC/Iraq/Yemen targets; belligerent homelands and pure '
                     'maritime targets excluded.</p>', unsafe_allow_html=True)
     except Exception as exc:  # noqa: BLE001
@@ -602,6 +609,14 @@ _tot = 23.0 + 68.0 + sc["strength"] * 88.0
 m3.metric("Forecast composition",
           f"{sc['strength']*88/_tot:.0%} framework · {68/_tot:.0%} historical analogs · {23/_tot:.0%} this war",
           "analogs: Tanker War, 2019, 2020, 2024×2, 2025", delta_color="off")
+
+st.markdown('<p class="source">Disclosure on method: the scorecard that '
+            'sets the framework weight is itself structured judgment — its '
+            'graders and weights are declared, not estimated. The independent '
+            'check is that an empirical-Bayes fit of prior strength to the '
+            'transition data, which never touches the scorecard, lands at the '
+            'same weight (~3 vs 3.2). Convergence of two imperfect methods, '
+            'not proof.</p>', unsafe_allow_html=True)
 
 LABELS = {
     "no_coercive_leverage": ("Punishment is not coercing",
@@ -764,7 +779,9 @@ try:
     fd = read_latest("fundamentals").iloc[-1]
     pr = read_latest("premia").iloc[-1]
     q1, q2, q3, q4 = st.columns(4)
-    q1.metric("Geopolitical premium", f"${fd['war_premium']:+.0f}/bbl",
+    q1.metric("Geopolitical premium",
+              f"${fd['war_premium']:+.0f} ± {fd.get('premium_band', 0):.0f}/bbl"
+              if pd.notna(fd.get('premium_band')) else f"${fd['war_premium']:+.0f}/bbl",
               f"spot ${fd['brent_fred']:.0f} against fair ${fd['fundamentals_fair']:.0f}",
               delta_color="off")
     q2.metric("Retained at 12M", f"{fd['frac_premium_persisting']:.0%}"
@@ -854,7 +871,10 @@ war), and a third, mechanically independent leg — the bucket's Brent beta
 applied to Brent's typical episode move — all market-adjusted. The
 parenthetical band spans the legs. Triangulation mattered: single-window
 estimates had flattered tankers and condemned defense; across nine episodes
-those readings <em>reversed</em>.
+those readings <em>reversed</em>. One further honesty: at these
+magnitudes the tilts are <b>within their own bands</b> — directionally
+informative, not statistically distinguishable from zero. They rank the
+buckets; they do not size positions.
 </p>
 """, unsafe_allow_html=True)
         with st.expander("Exhibit: the triangulation detail (per episode, market-adjusted)"):
