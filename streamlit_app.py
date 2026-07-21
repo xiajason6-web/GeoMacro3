@@ -290,6 +290,8 @@ def regime(prior_strength: float, _lake_key: str) -> dict:
     dec_durable = float(durable.mean())
     dec_war_on = float(np.isin(st2, [1, 2, 3, 4]).mean())
     dec_s0 = float((st2 == 0).mean())  # transit-normal at Dec — the ledger's object
+    occ49 = p0 @ np.linalg.matrix_power(T, 49)   # ~12M horizon occupancy
+    war_on_12m = float(occ49[1:5].sum())
 
     return {
         "labels": r["labels"], "p0": r["p0"],
@@ -298,6 +300,7 @@ def regime(prior_strength: float, _lake_key: str) -> dict:
         "touch": r["touch"], "data_weight": r["data_weight"],
         "covariates": r.get("covariates") or {}, "model_cdf": model_cdf,
         "dec_durable": dec_durable, "dec_war_on": dec_war_on, "dec_s0": dec_s0,
+        "war_on_12m": war_on_12m,
     }
 
 
@@ -534,9 +537,13 @@ st.markdown(f"""
 <b>Variant views relative to consensus, in order of conviction.</b>
 <b>(1) Resolution durability</b> — the ladder above: fade the durable-peace
 tail, always carrying cheap deal-shock protection, because settlement risk
-here is an overnight gap. <b>(2) Duration at the back of the curve:</b> the
-12-month contract retains only ~{kept:.0%} of the ${war_prem:+.0f}/bbl
-premium — the term-structure expression of the same durability error.
+here is an overnight gap. <b>(2) Duration at the back of the curve:</b> valuing the
+12-month contract as an expectation across scenarios (not a probability), our
+{reg.get('war_on_12m', 0.7):.0%} war-continuation odds at that horizon imply
+an expected premium near ${reg.get('war_on_12m', 0.7)*war_prem:.0f}/bbl
+against the ~${kept*war_prem:.0f} the curve carries — a modest but persistent
+underpricing of duration, roughly half the size a naive probability reading
+would suggest.
 <b>(3) The lateral axis:</b> Gulf-infrastructure risk is priced in European
 gas and in Gulf equities, but is essentially absent from oil instruments.
 <b>(4) The fiscal clock:</b> Iran's usable reserves cover {_runway_txt} worth of blocked
