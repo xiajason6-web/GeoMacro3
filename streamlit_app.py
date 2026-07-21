@@ -828,7 +828,11 @@ try:
         "July re-escalation": eq["reescalation_jul"].map("{:+.1%}".format),
         "S3-day edge (per day)": eq["s3_sensitivity"].map("{:+.2%}".format),
     })
-    if has_tilt:
+    if has_tilt and "tilt_lo" in eq.columns:
+        disp["variant tilt (3m)"] = [
+            f"{m:+.2%}  ({lo:+.1%} … {hi:+.1%})"
+            for m, lo, hi in zip(eq["tilt_3m"], eq["tilt_lo"], eq["tilt_hi"])]
+    elif has_tilt:
         disp["variant tilt (3m)"] = eq["tilt_3m"].map("{:+.2%}".format)
     st.dataframe(disp, hide_index=True)
     if has_tilt:
@@ -836,19 +840,39 @@ try:
         st.markdown(f"""
 <p class="lede">
 The first four columns are descriptive — each bucket's measured behavior. The
-<b>variant tilt</b> is where our model meets the market: it is the expected
+<b>variant tilt</b> is where our model meets the market: the expected
 three-month return differential <em>if our war probabilities are right and the
-market's are wrong</em>, computed as each probability gap times the bucket's
-measured payoff in that scenario's episode. Two gaps drive it today: we assign
+market's are wrong</em> — each probability gap times the bucket's payoff when
+that scenario materializes. Two gaps drive it: we assign
 <b>{r0['p_res_model']:.0%}</b> to Hormuz normalizing by September against the
 market's <b>{r0['p_res_mkt']:.0%}</b> (identical contract terms), and
 <b>{r0['p_esc_model']:.0%}</b> to touching all-out war within three months
-against an options-implied <b>{r0['p_esc_mkt']:.0%}</b>. The common grind
-drift cancels in the differential, so the tilt isolates pure disagreement.
-Positive tilt = the bucket is worth more under our distribution than the
-market's — an overweight candidate on the variant view.
+against an options-implied <b>{r0['p_esc_mkt']:.0%}</b>. The payoffs are
+<b>triangulated</b>, not read off a single week: the median across this war's
+own episodes, six analog-war episodes (Abqaiq 2019 through the 2025 twelve-day
+war), and a third, mechanically independent leg — the bucket's Brent beta
+applied to Brent's typical episode move — all market-adjusted. The
+parenthetical band spans the legs. Triangulation mattered: single-window
+estimates had flattered tankers and condemned defense; across nine episodes
+those readings <em>reversed</em>.
 </p>
 """, unsafe_allow_html=True)
+        with st.expander("Exhibit: the triangulation detail (per episode, market-adjusted)"):
+            try:
+                tri = read_latest("payoff_triangulation")
+                piv = tri[tri["bucket"] != "brent"].pivot_table(
+                    index=["scenario", "bucket"], columns="episode",
+                    values="abnormal_return")
+                st.dataframe(piv.style.format("{:+.1%}", na_rep="—"))
+                st.markdown('<p class="source">Abnormal (S&amp;P-adjusted) '
+                            'bucket returns per episode window. The July-2026 '
+                            'defense selloff is visible as the outlier; in '
+                            'every other escalation episode defense rallied. '
+                            'Resolution episodes reliably cost tankers and '
+                            'energy 6-10% market-adjusted.</p>',
+                            unsafe_allow_html=True)
+            except Exception as exc:  # noqa: BLE001
+                st.info(f"triangulation detail unavailable: {exc}")
     st.markdown('<p class="source">Source: Yahoo daily closes, equal-weight '
                 'buckets (tankers FRO/INSW/TNK/TRMD/NAT/STNG; defense ITA/PPA; '
                 'energy XLE/XOP/OIH; Gulf KSA/UAE/QAT ETFs as the free proxy '
@@ -862,41 +886,42 @@ market's — an overweight candidate on the variant view.
 
     st.markdown("""
 <p class="lede">
-<b>Tankers — the all-weather expression.</b> Up ~11% since the outbreak and
-positive through <em>both</em> the détente and the re-escalation: war-risk
-premia and rerouting lift rates when the strait is contested, and reopening
-lifts volumes when it is not. The bucket is long the war's <em>duration</em>
-more than its direction — consistent with our base case — with the standing
-caveat that hulls are themselves S2 targets.
+<b>Defense — the variant overweight, and triangulation's chief finding.</b>
+On raw 2026 returns the bucket looks like dead money, and on the July window
+alone it looked like a tactical avoid. Nine episodes say otherwise: July was
+the outlier, and in every other escalation episode on record — Abqaiq,
+Soleimani, October 2024, the 2026 outbreak — defense rallied, while losing
+nothing in resolution weeks. With our escalation odds twenty points above the
+options market and the §III restock arithmetic underneath (magazines rebuilt
+at a 15:1 replacement gap in <em>every</em> scenario), defense carries the
+only decisively positive tilt on the page. Structural and tactical now point
+the same way; a week ago, on one window, they appeared opposed — which is the
+argument for triangulating.
 <br><br>
-<b>Defense — structurally long, tactically avoid (the tilt makes the
-distinction).</b> Down ~7% since the outbreak and down through the July
-re-escalation: the market treats defense as risk-beta, not as the beneficiary
-of the §III arithmetic. The restock logic is scenario-independent — magazines
-drawn down at a 15:1 replacement gap must be rebuilt <em>whether or not a
-settlement holds</em> — yet the variant tilt on our 3-month horizon is
-<em>negative</em>, because empirically the bucket sells off in exactly the
-escalation episodes we weight more heavily than the market does. Both are
-true, on different clocks: a multi-year restock long that our own tactical
-framework says not to fund yet. Notes rarely admit this tension; the tilt
-column forces it.
+<b>Tankers — the all-weather story, demoted to neutral.</b> The +11% raw run
+conceals what market-adjustment reveals: resolution episodes reliably cost
+tankers 7–10% abnormal (April, June 2025), and our reopening odds run
+<em>above</em> the market's. The escalation leg still pays, and the two legs
+now roughly cancel. Long duration, yes — but no longer the page's best
+expression of our variant, and hulls remain S2 targets.
 <br><br>
-<b>Energy equity — the cleanest tactical war-beta.</b> Sold off ~8% into the
-June settlement, rallied ~7% on its collapse, and carries the largest positive
-S3-day edge. For expressing short-horizon escalation views in equities rather
-than futures, this is the bucket.
+<b>Energy equity — clean war-beta, wrong-way tilt.</b> Still the cleanest
+tactical escalation instrument (sold the June deal, bought its collapse,
+largest S3-day edge). But precisely because it loses 6–9% market-adjusted in
+resolution weeks, our above-market reopening odds make the <em>variant</em>
+tilt negative: the right vehicle for a pure escalation view is, on our own
+probabilities, not a bucket to be overweight.
 <br><br>
-<b>Gulf markets — the lateral axis, priced at last.</b> Down ~10% since the
-outbreak with a <em>negative</em> S3-day edge and almost no détente recovery:
-equity investors are charging a persistent war discount that oil instruments
-do not carry. This is where our "the lateral axis is unpriced" argument meets
-its exception — unpriced in oil, priced in Riyadh — and a widening-war view is
-expressible as a Gulf-market underweight against energy-equity length.
+<b>Gulf markets — the lateral axis, priced in Riyadh.</b> A persistent ~10%
+war discount, a negative S3-day edge, little détente recovery, and a modestly
+negative tilt. The "unpriced lateral axis" argument finds its exception here —
+unpriced in oil, priced in Gulf equity — and a widening-war view expresses as
+a Gulf underweight rather than a fresh short.
 <br><br>
-<b>Airlines — the settlement long.</b> The mirror image: up 5% in the détente,
-down 7.5% in the re-escalation. A cheap, liquid way to lean toward the
-deal-holds scenario — or the natural short leg against tankers for a
-pure-persistence expression.
+<b>Airlines — the settlement long, roughly fairly priced against us.</b> The
+mirror-image bucket (up in détentes, down in escalations). Our higher
+reopening odds argue for it; our higher escalation odds argue against; the
+legs nearly cancel. It remains the natural hedge leg rather than a view.
 </p>
 """, unsafe_allow_html=True)
 except Exception as exc:  # noqa: BLE001
