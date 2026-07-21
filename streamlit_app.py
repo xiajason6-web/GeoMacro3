@@ -284,6 +284,7 @@ def regime(prior_strength: float, _lake_key: str) -> dict:
         prev_s0 = is0
     dec_durable = float(durable.mean())
     dec_war_on = float(np.isin(st2, [1, 2, 3, 4]).mean())
+    dec_s0 = float((st2 == 0).mean())  # transit-normal at Dec — the ledger's object
 
     return {
         "labels": r["labels"], "p0": r["p0"],
@@ -291,7 +292,7 @@ def regime(prior_strength: float, _lake_key: str) -> dict:
         "static_forecasts": {k: list(map(float, v)) for k, v in static["forecasts"].items()},
         "touch": r["touch"], "data_weight": r["data_weight"],
         "covariates": r.get("covariates") or {}, "model_cdf": model_cdf,
-        "dec_durable": dec_durable, "dec_war_on": dec_war_on,
+        "dec_durable": dec_durable, "dec_war_on": dec_war_on, "dec_s0": dec_s0,
     }
 
 
@@ -433,9 +434,10 @@ k1.metric("A peace that HOLDS (3m)", f"{f3[5]:.0%}",
            f"{_dn_lo:.0%}–{_dn_hi:.0%} for the world this requires")
           if _b3 and _dn_lo is not None else "settlements decay in ~3 weeks here",
           delta_color="off")
-k2.metric("War still on at year-end", f"{reg.get('dec_war_on', 0):.0%}",
-          "model state-occupancy estimate for December 31",
-          delta_color="off")
+k2.metric("Transits still below normal at year-end",
+          f"{1 - reg.get('dec_s0', 0.2):.0%}",
+          "matches the graded ledger's transit criterion; a deal in force with "
+          "traffic still depressed counts as unresolved", delta_color="off")
 k3.metric("The grind persists (3m)", f"{p_s2plus:.0%}",
           (f"80% CI {_b3['s2plus_lo']:.0%}–{_b3['s2plus_hi']:.0%}") if _b3
           else "chokepoint/infrastructure war", delta_color="off")
@@ -452,8 +454,8 @@ st.markdown(f"""
 <b>Our central view: the oil complex materially overprices durable
 resolution.</b> We estimate a {f3[5]:.0%} probability that a settlement
 reached over the next three months is still in force at the end of that
-horizon, and a {1-reg.get('dec_war_on', 0.8):.0%} probability that the
-conflict has genuinely concluded by year-end. Against this, market pricing
+horizon, and a {reg.get('dec_s0', 0.2):.0%} probability that Hormuz traffic
+has genuinely renormalized by year-end (the graded ledger's own criterion). Against this, market pricing
 embeds considerably higher resolution odds: the crude options market assigns
 {_dn_lo:.0%}–{_dn_hi:.0%} to a sub-$75 outcome within roughly a month — a
 scenario that, in our assessment, requires a durable settlement — and the
@@ -479,17 +481,17 @@ try:
          "our model": f"{reg.get('dec_durable', 0):.0%}",
          "the market": "no instrument prices this",
          "assessment": "not separately priced"},
-        {"claim (weakest → strongest)": "A signed final deal by Aug 31",
-         "our model": f"~{reg['forecasts']['1m'][5]:.0%} (S5 occupancy proxy)",
-         "the market": "7.5% (Polymarket deal contract)",
+        {"claim (weakest → strongest)": "A deal IN FORCE at end-August (not merely attempted)",
+         "our model": f"~{reg['forecasts']['1m'][5]:.0%} (occupancy; episode-by-then is ~4× higher)",
+         "the market": "7.5% (Polymarket final-deal contract)",
          "assessment": "in line with consensus — no variant"},
         {"claim (weakest → strongest)": "A settlement still holding at 3 months",
          "our model": f"{f3[5]:.0%}  [{_s5lo:.0%}–{_s5hi:.0%}]" if _b3 else f"{f3[5]:.0%}",
          "the market": (f"{_dn_lo:.0%}–{_dn_hi:.0%} (options sub-$75 tail)"
                         if _dn_lo is not None else "options downside tail"),
          "assessment": "market 2–3× our estimate — the core mispricing"},
-        {"claim (weakest → strongest)": "The war is over at year-end",
-         "our model": f"{1-reg.get('dec_war_on', 0.8):.0%}",
+        {"claim (weakest → strongest)": "Traffic normal at year-end (war effectively over)",
+         "our model": f"{reg.get('dec_s0', 0.2):.0%}",
          "the market": f"~{1-kept:.0%} of premium priced out by 12M (curve)" if kept else "curve back end",
          "assessment": "curve embeds a resolution we do not underwrite"},
     ])
