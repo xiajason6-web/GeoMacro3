@@ -507,6 +507,24 @@ with tab_signals:
                "positive), A6 SURVIVES (100%, n=5 — tiny). Survival earns "
                "monitoring, not capital.")
 
+    st.divider()
+    st.subheader("📋 Public track record")
+    try:
+        from src.report.calls import load, summary
+        doc = load()
+        s = summary(doc)
+        st.markdown(f"**{s['n_calls']} calls** since {s['first_call']} — "
+                    f"{s['n_open']} open, {s['n_resolved']} resolved"
+                    + (f", **Brier {s['brier']:.3f}**" if s["brier"] is not None else "")
+                    + ". Append-only, git-timestamped, auto-graded daily "
+                      "([ledger](https://github.com/xiajason6-web/GeoMacro3/blob/main/calls/ledger.yaml)).")
+        rows = [{"made": c["made"], "p": f"{c['p']:.0%}",
+                 "claim": c["claim"][:80],
+                 "status": c.get("outcome", "open")} for c in doc["calls"]]
+        st.dataframe(pd.DataFrame(rows), hide_index=True)
+    except Exception as exc:  # noqa: BLE001
+        st.info(f"ledger unavailable: {exc}")
+
 # --------------------------------------------------------------------------- #
 with tab_score:
     st.subheader("Is the war behaving as Mearsheimer predicts?")
