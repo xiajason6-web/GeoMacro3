@@ -104,12 +104,33 @@ def touch_probabilities(T: np.ndarray, p0: np.ndarray, max_weeks: int = 52) -> d
         resolved |= hit4 | hit5
         if resolved.all():
             break
+    # MARGINAL touch probabilities — simulated WITHOUT cross-absorption (the war
+    # continues through S5 visits, as it really did in April and June). These are
+    # far more knob-stable than the first-passage race above (which
+    # ratio-compounds hazard perturbations over ~52 steps; see ASSUMPTIONS.md
+    # sensitivity results) and answer the decision questions directly.
+    rng2 = np.random.default_rng(RNG_SEED + 1)
+    st2 = rng2.choice(6, size=N_SIM, p=p0 / p0.sum())
+    seen4_13 = np.zeros(N_SIM, dtype=bool); seen5_13 = np.zeros(N_SIM, dtype=bool)
+    seen4_26 = np.zeros(N_SIM, dtype=bool); seen5_26 = np.zeros(N_SIM, dtype=bool)
+    for wk in range(1, 27):
+        u = rng2.random(N_SIM)
+        cum = T[st2].cumsum(axis=1)
+        st2 = np.clip((u[:, None] > cum).sum(axis=1), 0, 5)
+        if wk <= 13:
+            seen4_13 |= st2 == 4; seen5_13 |= st2 == 5
+        seen4_26 |= st2 == 4; seen5_26 |= st2 == 5
+
     return {
         "p_touch_s4_before_s5": s4_first / N_SIM,
         "p_touch_s5_before_s4": s5_first / N_SIM,
         "p_neither_within_1y": 1 - (s4_first + s5_first) / N_SIM,
         "median_weeks_to_s5": float(np.median(weeks_to_s5)) if weeks_to_s5 else None,
         "mean_weeks_in_s2plus": float(weeks_in_s2plus.mean()),
+        "p_visit_s4_3m": float(seen4_13.mean()),
+        "p_visit_s5_3m": float(seen5_13.mean()),
+        "p_visit_s4_6m": float(seen4_26.mean()),
+        "p_visit_s5_6m": float(seen5_26.mean()),
     }
 
 

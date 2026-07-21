@@ -130,8 +130,19 @@ def section_pq() -> list[str]:
         d = reg["forecasts"][h]
         lines.append(f"- {h}: " + ", ".join(f"{s} {p:.0%}" for s, p in zip(STATES, d) if p >= 0.05))
     t = reg["touch"]
-    lines.append(f"- P(touch S4 before S5) **{t['p_touch_s4_before_s5']:.0%}**; "
-                 f"median weeks to S5 when reached: {t['median_weeks_to_s5']:.0f}")
+    try:
+        from src.alpha.sensitivity import touch_band
+        b = touch_band()
+        race = f"**{b['lo']:.0%}–{b['hi']:.0%}** (knob-uncertainty band; point estimates not meaningful)"
+    except Exception:  # noqa: BLE001
+        race = f"~{t['p_touch_s4_before_s5']:.0%} (range unavailable — treat as rough)"
+    lines.append(f"- P(touch S4 before S5): {race}")
+    lines.append(f"- Marginals (stabler): P(visit S4 within 3m) "
+                 f"**{t.get('p_visit_s4_3m', 0):.0%}** / 6m {t.get('p_visit_s4_6m', 0):.0%}; "
+                 f"P(visit S5 within 3m) **{t.get('p_visit_s5_3m', 0):.0%}** / 6m "
+                 f"{t.get('p_visit_s5_6m', 0):.0%}"
+                 + (f"; median weeks to S5 when reached {t['median_weeks_to_s5']:.0f}"
+                    if t.get("median_weeks_to_s5") else ""))
 
     lines.append("")
     lines.append("**Q (market):**")

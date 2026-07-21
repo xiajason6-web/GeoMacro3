@@ -163,6 +163,18 @@ masses, scorecard weights) + two adversarial combos (ALL-HAWK, ALL-DOVE).
 | C2 P(S3 @3m) — widening/attractor | 34% | 27–42% | **ROBUST** (always ≥1.8× the uninformed 15%) |
 | C3 P(S4 @3m) — small all-out tail | 4% | 2–5% | **ROBUST** (never exceeds 5%) |
 | C4 P(touch S4 before S5) | 35% | 24–41% | **LEVEL-FRAGILE** — direction fine, level knob-sensitive; quote "one-in-four to two-in-five," never "39%" |
+
+**C4 remediation (2026-07-21):** the fragility is structural — a first-passage
+RACE between two rare events ratio-compounds hazard perturbations over ~52
+steps. Three-part fix implemented: (1) the race stat is now displayed
+everywhere as its knob-uncertainty band (`sensitivity.touch_band()`, currently
+24–41%), never a point; (2) stabler MARGINAL statistics added
+(`p_visit_s4/s5_3m/6m`, simulated without cross-absorption): P(visit S4 @3m)
+33% vs S4 occupancy 4% — brief all-out excursions likely, sustained all-out war
+rare (matches the two observed S4 excursion weeks); P(visit S5 @3m) 57% vs S5
+occupancy 8% — deal episodes likely, deals decay (matches April/June). The race
+stat had conflated visiting with staying. (3) The deep fix — grounding the two
+hazards via the analog-conflict fit — remains queue #1.
 | C5 derived prior_strength | 3.19 | 3.16–3.23 | **ROBUST** — near-invariant to weights |
 
 Two structural lessons:

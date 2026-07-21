@@ -153,6 +153,12 @@ def regime(prior_strength: float, _lake_key: str) -> dict:
     else:  # very stale module: degrade gracefully rather than crash
         r = run(prior_strength)
         static = r
+    try:  # knob-uncertainty band for the fragile race stat (see ASSUMPTIONS.md)
+        from src.alpha.sensitivity import touch_band
+        band = touch_band()
+    except Exception:  # noqa: BLE001
+        band = None
+    r["touch"]["race_band"] = band
     return {
         "labels": r["labels"], "p0": r["p0"], "T": r["T"],
         "forecasts": {k: list(map(float, v)) for k, v in r["forecasts"].items()},
@@ -246,8 +252,11 @@ try:
     c4.metric("Mkt P(normal by Dec 31)", f"{float(hz.iloc[0]['yes_prob']):.0%}")
 except Exception:  # noqa: BLE001
     c4.metric("Mkt P(normal by Dec 31)", "n/a")
-c5.metric("P(touch S4 before S5)", f"{reg['touch']['p_touch_s4_before_s5']:.0%}",
-          f"{reg['data_weight']:.0%} data-weighted", delta_color="off")
+_band = reg["touch"].get("race_band")
+c5.metric("P(touch S4 before S5)",
+          f"{_band['lo']:.0%}–{_band['hi']:.0%}" if _band
+          else f"~{reg['touch']['p_touch_s4_before_s5']:.0%}",
+          "range: level is knob-sensitive (see ASSUMPTIONS.md)", delta_color="off")
 
 tab_state, tab_pq, tab_score, tab_signals, tab_stress, tab_about = st.tabs(
     ["📊 State & transits", "⚖️ P vs Q", "🎯 Mearsheimer scorecard",
@@ -362,11 +371,19 @@ with tab_pq:
         fdf = fdf[["2w", "1m", "3m", "6m"]]
         st.dataframe(fdf.style.format("{:.0%}"), height=260)
         mwks = reg["touch"]["median_weeks_to_s5"]
+        t = reg["touch"]
         st.caption(f"Horizontal-escalation prior, posterior = "
                    f"{reg['data_weight']:.0%} data / "
                    f"{1-reg['data_weight']:.0%} prior at strength={prior_strength}. "
                    + (f"Median weeks to S5 when reached: {mwks:.0f}."
                       if mwks is not None else "S5 not reached in simulation."))
+        if t.get("p_visit_s4_3m") is not None:
+            st.caption(f"**Marginal touch probabilities** (stabler than the race "
+                       f"stat): P(visit S4) {t['p_visit_s4_3m']:.0%} @3m / "
+                       f"{t['p_visit_s4_6m']:.0%} @6m · P(visit S5) "
+                       f"{t['p_visit_s5_3m']:.0%} @3m / {t['p_visit_s5_6m']:.0%} @6m "
+                       "(simulated without cross-absorption — the war continues "
+                       "through deal episodes, as it did in April and June).")
         ci = reg.get("covariates") or {}
         if ci and "static_forecasts" in reg:
             s3d = reg["forecasts"]["3m"][3] - reg["static_forecasts"]["3m"][3]

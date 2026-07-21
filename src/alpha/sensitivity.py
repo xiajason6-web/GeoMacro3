@@ -161,6 +161,28 @@ def verdicts(df: pd.DataFrame) -> list[str]:
     return out
 
 
+def touch_band() -> dict:
+    """Knob-uncertainty band for the fragile first-passage race: evaluate under
+    the two adversarial combos that bound the sensitivity sweep. Returns
+    {lo, base, hi} for p_touch_s4_before_s5. Used by the brief/dashboard so the
+    race stat is always quoted as a RANGE, never a point (ASSUMPTIONS.md)."""
+    import src.model.covariates as cov
+    from src.model.regime_markov import run
+
+    base = run(use_covariates=True)["touch"]["p_touch_s4_before_s5"]
+    vals = [base]
+    for hawk in (True, False):
+        a, c, b = _scaled_pressures(cov, fa=0.5 if hawk else 1.5,
+                                    fc=1.5 if hawk else 0.5,
+                                    fb=0.5 if hawk else 1.5)
+        with _patched(cov, munitions_pressure=a, spread_pressure=c,
+                      economic_pressure=b,
+                      S3_PUMP=min(cov.S3_PUMP * (1.5 if hawk else 0.5), 0.95),
+                      S4_SUPPRESS=min(cov.S4_SUPPRESS * (0.5 if hawk else 1.5), 0.95)):
+            vals.append(run(use_covariates=True)["touch"]["p_touch_s4_before_s5"])
+    return {"lo": float(min(vals)), "base": float(base), "hi": float(max(vals))}
+
+
 def main() -> int:
     df = sweep()
     from src.common import write_partition
