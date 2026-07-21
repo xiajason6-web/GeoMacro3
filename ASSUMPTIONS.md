@@ -214,14 +214,37 @@ the 20-count budget and relevance weights are declared knobs (sweepable); the
 C4 knob-band barely narrowed (23–40%) because it is driven by covariate effect
 sizes, not hazard levels — narrowing it needs event-study elasticities (#5).
 
-## Priority queue for further grounding
+## Event-study elasticities — DONE (2026-07-21)
 
-1. ~~Analog-conflict transition fit~~ **DONE** (above).
-2. ~~Sensitivity sweep~~ **DONE** (results above). Re-run after any knob change:
-   `make sensitivity`.
-3. **Event-study elasticities** for covariate effect sizes (#5) — the remaining
-   lever that would actually narrow the C4 band; estimable from the analog
-   corpus + this war's event studies.
-4. **Solo-AHP pass** on scorecard weights (#3) — parked until sub-scores
-   diverge (currently moot; see sweep lesson 2).
-5. HMM soft-label emissions (#4) — now feasible against the analog corpus.
+`src/model/elasticities.py`. Findings and actions:
+- **S4_SUPPRESS 0.6 → 0.15 (calibrated DOWN).** Empirical S4 continuation
+  is 44% (5 episodes, 9 weeks, analogs+live: all-out excursions last ~1.8
+  weeks) but the model's T[S4,S4] was only 23% — the v2 prior + analog counts
+  already encode S4-unsustainability and the old knob DOUBLE-COUNTED it
+  (register #9's compounding caution, demonstrated empirically; calibration
+  hit the 0.0 boundary). S4_DECAY_BOOST halved to 0.4 for the same reason.
+- **S3_PUMP 0.7 → 0.8 (calibrated UP).** This war's own weekly series:
+  P(S3 next | spread high) = 30% vs 19% low → implied 0.85, shaded to 0.8
+  (n_high = 3 weeks).
+- **S5_DRIFT stays declared** — unidentifiable (p_b ~0 all war; 1988
+  exhaustion→ceasefire is one qualitative episode).
+- **Payoff: the C4 band collapsed 23–40% → 35–41%** (width 17pp → 6pp), and the
+  refreshed sweep now shows **ALL FIVE conclusions ROBUST** (C1 52–61%,
+  C2 19–32%, C3 3–4%, C4 35–41%, C5 3.14–3.23). Post-analog-fit bases:
+  persistence 57%, S3 25%, S0 has real mass (base rate).
+
+## Priority queue — CLOSED (2026-07-21)
+
+1. ~~Analog-conflict transition fit~~ **DONE**.
+2. ~~Sensitivity sweep~~ **DONE**; re-run after any knob change (`make sensitivity`).
+3. ~~Event-study elasticities~~ **DONE** (above).
+4. **Solo-AHP scorecard weights — PARKED with trigger:** currently moot (all
+   sub-scores agree, 0.69–0.80, so weights don't bind). Trigger: any two
+   sub-scores diverge by >0.25 — then do the AHP pass before trusting M.
+5. **HMM soft-label emissions — BLOCKED BY DATA, with trigger:** fitting
+   emissions needs an observable series per analog week, but transit data
+   doesn't exist pre-2019 (PortWatch starts 2019; no Tanker-War AIS). Trigger:
+   ~40+ live weeks accumulated, then fit on live data alone.
+
+Every actionable grounding item is done; the remaining two have explicit
+reopen-triggers. The register is maintenance-mode: new knobs enter with a tag.

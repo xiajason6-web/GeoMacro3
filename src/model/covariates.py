@@ -24,13 +24,25 @@ import numpy as np
 
 STATES = ["S0", "S1", "S2", "S3", "S4", "S5"]
 
-# Conviction knobs (bounded effect sizes; NOT fitted). At full pressure (p=1):
-S4_SUPPRESS = 0.6      # *->S4 and S4->S4 multiplied by up to (1 - 0.6) = 0.40
-S4_DECAY_BOOST = 0.8   # S4->S2/S3 multiplied by up to (1 + 0.8) = 1.80
-S3_PUMP = 0.7          # S1/S2/S3->S3 multiplied by up to (1 + 0.7) = 1.70
-S5_DRIFT = 0.4         # *->S5 multiplied by up to (1 + 0.4) = 1.40 — deliberately
-#                        small: face-lock (prior) keeps deals unstable even under
-#                        economic strain, so 8b only NUDGES the deal drift.
+# Effect sizes — CALIBRATED where evidence exists (src/model/elasticities.py,
+# 2026-07-21), declared where not. Provenance per knob:
+S4_SUPPRESS = 0.15     # CALIBRATED DOWN from 0.6. Empirical S4 continuation is
+#                        44% (5 episodes, 9 weeks, analogs+live) but the model's
+#                        T[S4,S4] was only 23% — the v2 prior + analog counts
+#                        ALREADY encode S4-unsustainability, and the old knob
+#                        double-counted it (the ASSUMPTIONS.md #9 compounding
+#                        caution, demonstrated). Calibration hit the 0.0
+#                        boundary; 0.15 retained as headroom for RISING
+#                        depletion, not level effects.
+S4_DECAY_BOOST = 0.4   # halved from 0.8 for the same double-count reason
+#                        (not separately identifiable from T44 calibration).
+S3_PUMP = 0.8          # CALIBRATED UP from 0.7. This war's weekly series:
+#                        P(S3 next | spread high) = 30% vs 19% low, ratio 1.56
+#                        -> implied 0.85 at observed pressure; shaded to 0.8
+#                        because n_high = 3 weeks.
+S5_DRIFT = 0.4         # DECLARED (unidentifiable): p_b ~0 all war, no
+#                        in-sample variation; 1988 exhaustion->ceasefire is one
+#                        qualitative episode. Face-lock argues keeping it small.
 
 
 def munitions_pressure() -> dict:
