@@ -820,6 +820,7 @@ those that actually do.
 
 try:
     eq = read_latest("equities_readthrough").copy()
+    has_tilt = "tilt_3m" in eq.columns and eq["tilt_3m"].notna().any()
     disp = pd.DataFrame({
         "bucket": eq["bucket"],
         "since outbreak": eq["since_war"].map("{:+.1%}".format),
@@ -827,14 +828,37 @@ try:
         "July re-escalation": eq["reescalation_jul"].map("{:+.1%}".format),
         "S3-day edge (per day)": eq["s3_sensitivity"].map("{:+.2%}".format),
     })
+    if has_tilt:
+        disp["variant tilt (3m)"] = eq["tilt_3m"].map("{:+.2%}".format)
     st.dataframe(disp, hide_index=True)
+    if has_tilt:
+        r0 = eq.iloc[0]
+        st.markdown(f"""
+<p class="lede">
+The first four columns are descriptive — each bucket's measured behavior. The
+<b>variant tilt</b> is where our model meets the market: it is the expected
+three-month return differential <em>if our war probabilities are right and the
+market's are wrong</em>, computed as each probability gap times the bucket's
+measured payoff in that scenario's episode. Two gaps drive it today: we assign
+<b>{r0['p_res_model']:.0%}</b> to Hormuz normalizing by September against the
+market's <b>{r0['p_res_mkt']:.0%}</b> (identical contract terms), and
+<b>{r0['p_esc_model']:.0%}</b> to touching all-out war within three months
+against an options-implied <b>{r0['p_esc_mkt']:.0%}</b>. The common grind
+drift cancels in the differential, so the tilt isolates pure disagreement.
+Positive tilt = the bucket is worth more under our distribution than the
+market's — an overweight candidate on the variant view.
+</p>
+""", unsafe_allow_html=True)
     st.markdown('<p class="source">Source: Yahoo daily closes, equal-weight '
                 'buckets (tankers FRO/INSW/TNK/TRMD/NAT/STNG; defense ITA/PPA; '
                 'energy XLE/XOP/OIH; Gulf KSA/UAE/QAT ETFs as the free proxy '
                 'for Gulf sovereign risk — true CDS is paid data; airlines '
                 'JETS). S3-day edge = mean return on coded S3-event days minus '
-                'all other war days (n=8 event days; treat as indicative).</p>',
-                unsafe_allow_html=True)
+                'all other war days (n≈7 event days). Tilt caveats: episode '
+                'payoffs come from single windows; the escalation-side market '
+                'proxy is options-implied P(≈Brent&gt;100) — an imperfect object '
+                'match, flagged rather than hidden. Indicative, not '
+                'inferential.</p>', unsafe_allow_html=True)
 
     st.markdown("""
 <p class="lede">
@@ -845,14 +869,17 @@ lifts volumes when it is not. The bucket is long the war's <em>duration</em>
 more than its direction — consistent with our base case — with the standing
 caveat that hulls are themselves S2 targets.
 <br><br>
-<b>Defense — the unpriced restock story (our variant).</b> Down ~7% since
-the outbreak and down through the July re-escalation: the market is treating
-defense as risk-beta, not as the beneficiary of the §III arithmetic. Yet the
-production-deficit logic is scenario-independent — magazines drawn down at a
-15:1 replacement gap must be rebuilt <em>whether or not a settlement holds</em>.
-Of everything on this page, this is the read-through most at odds with its own
-fundamentals; it is also the least time-sensitive, with a multi-year horizon
-rather than our 3–6 months.
+<b>Defense — structurally long, tactically avoid (the tilt makes the
+distinction).</b> Down ~7% since the outbreak and down through the July
+re-escalation: the market treats defense as risk-beta, not as the beneficiary
+of the §III arithmetic. The restock logic is scenario-independent — magazines
+drawn down at a 15:1 replacement gap must be rebuilt <em>whether or not a
+settlement holds</em> — yet the variant tilt on our 3-month horizon is
+<em>negative</em>, because empirically the bucket sells off in exactly the
+escalation episodes we weight more heavily than the market does. Both are
+true, on different clocks: a multi-year restock long that our own tactical
+framework says not to fund yet. Notes rarely admit this tension; the tilt
+column forces it.
 <br><br>
 <b>Energy equity — the cleanest tactical war-beta.</b> Sold off ~8% into the
 June settlement, rallied ~7% on its collapse, and carries the largest positive

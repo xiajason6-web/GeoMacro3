@@ -87,17 +87,96 @@ def readthrough() -> pd.DataFrame:
     return df
 
 
+def variant_tilt(df: pd.DataFrame) -> pd.DataFrame:
+    """Apply the P−Q divergence to the buckets: expected 3m return differential
+    under OUR scenario probabilities vs the MARKET's.
+
+    Decomposition: E[3m] ≈ grind drift + p(resolution)·(resolution episode
+    payoff) + p(escalation)·(escalation episode payoff). The grind term is
+    common to both measures, so the DIFFERENTIAL is exactly
+        tilt = Δp_res · payoff_res + Δp_esc · payoff_esc
+    where the payoffs are each bucket's MEASURED June-détente and
+    July-re-escalation window returns.
+
+    Probability pairings (object-matching is approximate; documented):
+      resolution: model first-passage P(Hormuz normal by Sep 30) vs the
+        Polymarket September contract — identical resolution criteria.
+      escalation: model P(visit S4 within 3m) vs the options-implied
+        P(≈Brent>100) — the best available market proxy for the escalation
+        tail; an imperfect object match, flagged as such.
+    """
+    import numpy as np
+
+    from src.model.scorecard import derived_strength
+    from src.model.regime_markov import run as _run
+
+    strength = derived_strength()
+    r = _run(strength, use_covariates=True)
+    T, p0 = r["T"], r["p0"]
+    rng = np.random.default_rng(20260721)
+    N = 20000
+    stv = rng.choice(6, size=N, p=p0 / p0.sum())
+    first = np.full(N, 999)
+    for wk in range(1, 30):
+        u = rng.random(N)
+        cum = T[stv].cumsum(axis=1)
+        stv = np.clip((u[:, None] > cum).sum(axis=1), 0, 5)
+        hit = (stv == 0) & (first == 999)
+        first[hit] = wk
+    import datetime as _dt
+    wks_sep = max(1, round((_dt.date(2026, 9, 30) - _dt.date.today()).days / 7))
+    p_res_model = float((first <= wks_sep).mean())
+    p_esc_model = float(r["touch"].get("p_visit_s4_3m", 0.3))
+
+    pm = read_latest("predmkt_panel")
+    hz = pm[(pm["family"] == "hormuz_normalize")
+            & (pm["end_date"].astype(str).str.startswith("2026-09"))]
+    p_res_mkt = float(hz.sort_values("volume", ascending=False).iloc[0]["yes_prob"]) \
+        if len(hz) else np.nan
+    try:
+        rnd = read_latest("rnd")
+        p_esc_mkt = float(rnd[rnd["symbol"] == "USO"].iloc[-1]["p_up16"])
+    except Exception:  # noqa: BLE001
+        p_esc_mkt = np.nan
+
+    d_res = p_res_model - p_res_mkt
+    d_esc = p_esc_model - p_esc_mkt
+    df = df.copy()
+    df["tilt_3m"] = d_res * df["detente_jun"] + d_esc * df["reescalation_jul"]
+    df["p_res_model"], df["p_res_mkt"] = p_res_model, p_res_mkt
+    df["p_esc_model"], df["p_esc_mkt"] = p_esc_model, p_esc_mkt
+    return df
+
+
 def main() -> int:
     df = readthrough()
+    try:
+        df = variant_tilt(df)
+    except Exception as exc:  # noqa: BLE001 — descriptive table still lands
+        print(f"[equities] variant tilt unavailable: {exc}", file=sys.stderr)
     out = write_partition(df, "equities_readthrough")
     print(f"[equities] read-through -> {out}")
+    has_tilt = "tilt_3m" in df.columns
     for _, r in df.iterrows():
-        print(f"  {r['bucket']:<14} since-war {r['since_war']:+7.1%}  "
-              f"détente {r['detente_jun']:+6.1%}  re-esc {r['reescalation_jul']:+6.1%}  "
-              f"S3-day edge {r['s3_sensitivity']:+.2%}/d (n={r['n_s3_days']})")
-    print("[equities] read: buckets that rally on re-escalation and sell off in "
-          "détente are long the war; Gulf markets' S3-day edge measures the "
-          "lateral axis directly. Caveats: overlapping windows, n small.")
+        line = (f"  {r['bucket']:<14} since-war {r['since_war']:+7.1%}  "
+                f"détente {r['detente_jun']:+6.1%}  re-esc {r['reescalation_jul']:+6.1%}  "
+                f"S3-day edge {r['s3_sensitivity']:+.2%}/d (n={r['n_s3_days']})")
+        if has_tilt:
+            line += f"  VARIANT TILT {r['tilt_3m']:+.2%}"
+        print(line)
+    if has_tilt:
+        r0 = df.iloc[0]
+        print(f"[equities] tilt inputs: resolution P {r0['p_res_model']:.0%} vs "
+              f"Q {r0['p_res_mkt']:.0%} (Δ{r0['p_res_model']-r0['p_res_mkt']:+.0%}); "
+              f"escalation P {r0['p_esc_model']:.0%} vs Q {r0['p_esc_mkt']:.0%} "
+              f"(Δ{r0['p_esc_model']-r0['p_esc_mkt']:+.0%})")
+        print("[equities] tilt = Δp_res·(détente payoff) + Δp_esc·(re-esc payoff): "
+              "the expected 3m return differential IF our probabilities are right "
+              "and the market's are wrong. Positive = own more than the market "
+              "would; grind drift cancels in the differential.")
+    print("[equities] caveats: episode payoffs from single windows; escalation "
+          "market proxy is options-implied P(Brent>100) — an imperfect object "
+          "match; n small throughout.")
     return 0
 
 
