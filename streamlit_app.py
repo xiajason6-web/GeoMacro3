@@ -268,12 +268,30 @@ def regime(prior_strength: float, _lake_key: str) -> dict:
         wks = max(1, round((d - today).days / 7))
         model_cdf[label] = float((first <= wks).mean())
 
+    # durability ladder inputs: 2-consecutive-S0-weeks by Dec (durable
+    # normalization) and state occupancy AT Dec (war still on) — same chain,
+    # separate pass so the touch/durable/occupancy distinction is live data
+    wks_dec = max(1, round((dt.date(2026, 12, 31) - today).days / 7))
+    st2 = rng.choice(6, size=N, p=p0 / p0.sum())
+    durable = np.zeros(N, bool)
+    prev_s0 = np.zeros(N, bool)
+    for _w in range(wks_dec):
+        u = rng.random(N)
+        cum = T[st2].cumsum(axis=1)
+        st2 = np.clip((u[:, None] > cum).sum(axis=1), 0, 5)
+        is0 = st2 == 0
+        durable |= is0 & prev_s0
+        prev_s0 = is0
+    dec_durable = float(durable.mean())
+    dec_war_on = float(np.isin(st2, [1, 2, 3, 4]).mean())
+
     return {
         "labels": r["labels"], "p0": r["p0"],
         "forecasts": {k: list(map(float, v)) for k, v in r["forecasts"].items()},
         "static_forecasts": {k: list(map(float, v)) for k, v in static["forecasts"].items()},
         "touch": r["touch"], "data_weight": r["data_weight"],
         "covariates": r.get("covariates") or {}, "model_cdf": model_cdf,
+        "dec_durable": dec_durable, "dec_war_on": dec_war_on,
     }
 
 
@@ -402,101 +420,109 @@ except Exception:  # noqa: BLE001
 
 k1, k2, k3, k4, k5 = st.columns(5)
 _b3 = reg.get("bands_3m")
-k1.metric("Base case: the grind persists", f"{p_s2plus:.0%}",
-          (f"80% credible interval {_b3['s2plus_lo']:.0%}–{_b3['s2plus_hi']:.0%}, "
-           "parameter uncertainty only") if _b3 else
-          "probability the strait remains disrupted at 3 months",
+_s5lo = _b3["per_state_lo"][5] if _b3 else None
+_s5hi = _b3["per_state_hi"][5] if _b3 else None
+try:
+    _rnd_all = read_latest("rnd")
+    _dn_lo = float(_rnd_all["p_dn13"].min())
+    _dn_hi = float(_rnd_all["p_dn13"].max())
+except Exception:  # noqa: BLE001
+    _dn_lo = _dn_hi = None
+k1.metric("A peace that HOLDS (3m)", f"{f3[5]:.0%}",
+          (f"80% CI {_s5lo:.0%}–{_s5hi:.0%}; oil options pay "
+           f"{_dn_lo:.0%}–{_dn_hi:.0%} for the world this requires")
+          if _b3 and _dn_lo is not None else "settlements decay in ~3 weeks here",
           delta_color="off")
-k2.metric("Shape of the risk", f"{f3[3]:.0%} vs {f3[4]:.0%}",
-          "Gulf-infrastructure widening vs all-out escalation", delta_color="off")
-k3.metric("Ceasefire risk is episodic", f"{t.get('p_visit_s5_3m', 0):.0%}",
-          f"probability of a truce attempt; {f3[5]:.0%} that it durably holds",
+k2.metric("War still on at year-end", f"{reg.get('dec_war_on', 0):.0%}",
+          "state occupancy on Dec 31 — lulls happen; endings don't",
           delta_color="off")
+k3.metric("The grind persists (3m)", f"{p_s2plus:.0%}",
+          (f"80% CI {_b3['s2plus_lo']:.0%}–{_b3['s2plus_hi']:.0%}") if _b3
+          else "chokepoint/infrastructure war", delta_color="off")
+k4.metric("It widens, not climbs", f"{f3[3]:.0%} vs {f3[4]:.0%}",
+          "Gulf-infrastructure war vs all-out war, 3 months", delta_color="off")
 if war_prem is not None:
     _pb = float(fd_h.get("premium_band", 0) or 0)
-    k4.metric("Geopolitical premium in Brent",
+    k5.metric("War premium in oil",
               f"${war_prem:+.0f} ± {_pb:.0f}/bbl" if _pb else f"${war_prem:+.0f}/bbl",
-              f"{kept:.0%} retained by the 12M contract" if kept else "",
-              delta_color="off")
-if mdl_dec is not None and mkt_dec is not None:
-    k5.metric("Hormuz normal by Dec-31", f"P {mdl_dec:.0%} · Q {mkt_dec:.0%}",
-              "on contract terms (any-day touch) — yet 81% the war is still on "
-              "at year-end: lulls decay", delta_color="off")
+              f"curve prices {1-kept:.0%} of it GONE by next summer — durability "
+              "we don't see" if kept else "", delta_color="off")
 
 st.markdown(f"""
 <p class="lede">
-<b>Our view.</b> We expect the conflict to persist through the investment
-horizon and to broaden laterally — toward Gulf critical infrastructure and
-third-country basing — rather than escalate vertically into sustained
-theater-wide war. We assign {p_s2plus:.0%} to continued disruption at three
-months against {f3[4]:.0%} to durable all-out escalation and {f3[5]:.0%} to a
-ceasefire that holds. Truce announcements are likely within the horizon
-({t.get('p_visit_s5_3m', 0):.0%}) but are, in our framework, <em>episodes
-rather than terminal events</em>: both 2026 precedents decayed inside a month.
-</p>
-<p class="lede">
-<b>Where we differ from consensus.</b> Consensus, as expressed in market
-pricing, has already capitulated on near-term reopening; we see no residual
-edge in the front. Our variant view sits in three places. <b>(1) Duration:</b>
-the 12-month Brent contract retains only ~{kept:.0%} of the current
-${war_prem:+.0f}/bbl geopolitical premium — the curve is underwriting a
-resolution our framework does not expect on that timeline. <b>(2) The lateral
-axis:</b> infrastructure risk to Gulf water, power, and export capacity is
-priced in European gas (TTF) but is essentially absent from oil instruments —
-a cross-market inconsistency. <b>(3) Resolution durability:</b> the oil
-options market pays for downside consistent with a durable settlement;
-prediction markets price a final deal in single digits, and the empirical
-half-life of 2026 ceasefires is ~3 weeks. We fade the durable-peace tail while
-carrying cheap deal-shock protection against its arrival.
-<b>(4) The fiscal clock:</b> on IMF usable-reserve figures, Iran's
-blocked-export losses exhaust its accessible buffer in roughly 130 days — a
-forcing window in late 2026 that no instrument prices, because markets quote
-deal <em>odds</em>, not deal timing forced by cash. The common structure of
-all four: <em>the market prices this war's states; our framework prices its
-clocks</em> — the munitions clock, the fiscal clock, the deal-decay clock,
-and the futures calendar. Every disagreement we hold is about time, not
-events. A corollary worth stating now: a market trained by failed ceasefires
-will underreact to the real one — and the fiscal clock is the discriminator
-between a tactical truce and an exhausted one.
+<em>The market is overpaying for the possibility that this war ends
+cleanly.</em> Our framework puts a settlement that actually holds at
+<b>{f3[5]:.0%}</b> over three months, and the odds the war is genuinely over
+by New Year at <b>{1-reg.get('dec_war_on', 0.8):.0%}</b> — yet the oil
+complex prices a durable ending far more richly: the options market pays
+{_dn_lo:.0%}–{_dn_hi:.0%} for a sub-$75 world that requires one, and the
+futures curve prices roughly half the war premium out of existence by next
+summer. The disagreement is <b>not</b> about whether quiet spells occur — they
+will — but about whether they <em>last</em>. Both 2026 ceasefires died inside
+a month; the political structure (§III) says the next ones do too, until
+Iran's fiscal clock forces one born of exhaustion.
 </p>
 """, unsafe_allow_html=True)
 
-st.subheader("Scenario framework, 3-month horizon")
-if fair is not None:
-    scen = pd.DataFrame([
-        {"scenario": "Bear (for the premium): settlement holds",
-         "probability": f"~{f3[5]:.0%}",
-         "path for Brent": f"premium unwinds toward fundamentals (${fair:.0f}–{fair+10:.0f})",
-         "positioning consequence": "deal-shock hedges pay; escalation longs stopped"},
-        {"scenario": "Base: grind persists and widens",
-         "probability": f"~{p_s2plus:.0%}",
-         "path for Brent": f"range-bound near spot (${spot_fred-5:.0f}–{spot_fred+10:.0f}); back-of-curve repricing higher",
-         "positioning consequence": "long deferred contracts / calendar expressions carry positively"},
-        {"scenario": "Tail: vertical excursion (S4 touch)",
-         "probability": f"~{t.get('p_visit_s4_3m', 0):.0%} touch",
-         "path for Brent": "transient spike well above $110; mean-reverts as tempo proves unsustainable",
-         "positioning consequence": "convexity (OTM calls) monetized into strength, not held"},
+st.subheader("The durability ladder — the claim, rung by rung")
+try:
+    _mkt_touch = f"{mkt_dec:.0%}" if mkt_dec is not None else "—"
+    ladder = pd.DataFrame([
+        {"claim (weakest → strongest)": "Some lull touches normal (any single day by Dec 31)",
+         "our model": f"{reg['model_cdf'].get('2026-12-31', 0):.0%}",
+         "the market": f"{_mkt_touch} (Polymarket touch contract)",
+         "who is higher": "US — we expect lulls"},
+        {"claim (weakest → strongest)": "Normalization holds ~2 straight weeks by Dec 31",
+         "our model": f"{reg.get('dec_durable', 0):.0%}",
+         "the market": "no instrument prices this",
+         "who is higher": "—"},
+        {"claim (weakest → strongest)": "A signed final deal by Aug 31",
+         "our model": f"~{reg['forecasts']['1m'][5]:.0%} (S5 occupancy proxy)",
+         "the market": "7.5% (Polymarket deal contract)",
+         "who is higher": "agreement — no edge"},
+        {"claim (weakest → strongest)": "A settlement still holding at 3 months",
+         "our model": f"{f3[5]:.0%}  [{_s5lo:.0%}–{_s5hi:.0%}]" if _b3 else f"{f3[5]:.0%}",
+         "the market": (f"{_dn_lo:.0%}–{_dn_hi:.0%} (options sub-$75 tail)"
+                        if _dn_lo is not None else "options downside tail"),
+         "who is higher": "MARKET, 2–3× — the mispricing"},
+        {"claim (weakest → strongest)": "The war is over at year-end",
+         "our model": f"{1-reg.get('dec_war_on', 0.8):.0%}",
+         "the market": f"~{1-kept:.0%} of premium priced out by 12M (curve)" if kept else "curve back end",
+         "who is higher": "MARKET — the back end assumes an ending"},
     ])
-    st.dataframe(scen, hide_index=True,
-                 column_config={"scenario": st.column_config.TextColumn(width="medium"),
-                                "path for Brent": st.column_config.TextColumn(width="large")})
-    st.markdown('<p class="source">Probabilities: this model (§IV). Price paths: '
-                'scenario logic anchored to the premium decomposition (§V), not '
-                'point forecasts — the fair-value anchor carries a wide error '
-                'band.</p>', unsafe_allow_html=True)
+    st.dataframe(ladder, hide_index=True,
+                 column_config={"claim (weakest → strongest)":
+                                st.column_config.TextColumn(width="large")})
+    st.markdown('<p class="source">The inversion is the finding: we are MORE '
+                'optimistic than the market at the weak end of the ladder '
+                '(lulls happen) and far LESS at the strong end (endings do '
+                'not). The market prices durability as if it were a straight '
+                'interpolation from the lull odds; the deal-decay record '
+                '(two ceasefires, ~3-week half-life, no monitoring mechanisms) '
+                'says the ladder bends hard between rung two and rung four. '
+                'Caveats: the options tail includes non-war paths to sub-$75 '
+                '(demand shocks), so rung four overstates the gap somewhat; '
+                'rung five maps a price statement onto a state claim. '
+                'Rungs one, two and five are graded ledger entries (§IX).</p>',
+                unsafe_allow_html=True)
+except Exception as exc:  # noqa: BLE001
+    st.info(f"ladder unavailable: {exc}")
 
-# =========================================================================== #
-# II. THE TAPE
-# =========================================================================== #
-st.markdown("## II. What the tape shows")
-st.markdown("""
+st.markdown(f"""
 <p class="lede">
-The controlling series for the entire complex is physical: <b>daily transit
-calls at the Strait of Hormuz</b> — roughly a fifth of global oil supply. It
-is also the settlement source for the prediction-market contracts we mark
-against, which makes it the cleanest bridge between the physical war and its
-price. Normal throughput is ~75 calls/day; 60 is the market's own resolution
-threshold for "normalized."
+<b>Where we differ from consensus, in order of conviction.</b>
+<b>(1) Resolution durability</b> — the ladder above: fade the durable-peace
+tail, always carrying cheap deal-shock protection, because settlement risk
+here is an overnight gap. <b>(2) Duration at the back of the curve:</b> the
+12-month contract retains only ~{kept:.0%} of the ${war_prem:+.0f}/bbl
+premium — the term-structure expression of the same durability error.
+<b>(3) The lateral axis:</b> Gulf-infrastructure risk is priced in European
+gas and in Gulf equities, but is essentially absent from oil instruments.
+<b>(4) The fiscal clock:</b> Iran's usable reserves cover ~130 days of blocked
+exports — a forcing window in late 2026 that no instrument dates. The common
+structure: <em>the market prices this war's states; our framework prices its
+clocks</em> — and a market trained by failed ceasefires will underreact to
+the real one, for which the fiscal clock is the discriminator.
 </p>
 """, unsafe_allow_html=True)
 
