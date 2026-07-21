@@ -216,8 +216,13 @@ def build_lake() -> dict:
     except Exception as exc:  # noqa: BLE001
         status["premia"] = f"FAILED: {str(exc)[:50]}"
     try:
-        from src.features.equities import readthrough as _eqrt
-        wp(_eqrt(), "equities_readthrough")
+        from src.features.equities import readthrough as _eqrt, variant_tilt as _vt
+        _eq = _eqrt()
+        try:
+            _eq = _vt(_eq)   # apply the P-Q tilt so the dashboard column renders
+        except Exception:  # noqa: BLE001 - descriptive table still lands
+            pass
+        wp(_eq, "equities_readthrough")
         status["equities"] = "ok"
     except Exception as exc:  # noqa: BLE001
         status["equities"] = f"FAILED: {str(exc)[:50]}"
@@ -384,6 +389,14 @@ def brent_spot_history(_lake_key: str) -> pd.DataFrame:
 # --------------------------------------------------------------------------- #
 # Masthead
 # --------------------------------------------------------------------------- #
+try:
+    from src.features.economic import readings as _econ_head
+    _runway = _econ_head().get("iran_runway_days")
+except Exception:  # noqa: BLE001
+    _runway = None
+_runway_txt = (f"~{_runway:.0f} days at current prices" if _runway
+               else "roughly four months")
+
 st.markdown(f"""
 <p class="masthead-kicker">GeoMacro Research · Global Macro · Energy & Geopolitics</p>
 <h1 class="masthead-title">The Pricing of Escalation</h1>
@@ -526,7 +539,7 @@ here is an overnight gap. <b>(2) Duration at the back of the curve:</b> the
 premium — the term-structure expression of the same durability error.
 <b>(3) The lateral axis:</b> Gulf-infrastructure risk is priced in European
 gas and in Gulf equities, but is essentially absent from oil instruments.
-<b>(4) The fiscal clock:</b> Iran's usable reserves cover ~130 days of blocked
+<b>(4) The fiscal clock:</b> Iran's usable reserves cover {_runway_txt} worth of blocked
 exports — a forcing window in late 2026 that no instrument dates. The common
 structure: <em>the market prices this war's states; our framework prices its
 clocks</em> — and a market trained by failed ceasefires will underreact to
@@ -959,7 +972,8 @@ Soleimani, October 2024, the 2026 outbreak — defense rallied, while losing
 nothing in resolution weeks. With our escalation odds twenty points above the
 options market and the §III restock arithmetic underneath (magazines rebuilt
 at a 15:1 replacement gap in <em>every</em> scenario), defense carries the
-only decisively positive tilt on the page. Structural and tactical now point
+largest positive tilt on the page — though, like every tilt here, inside its
+noise band. Structural and tactical now point
 the same way; a week ago, on one window, they appeared opposed — which is the
 argument for triangulating.
 <br><br>
@@ -970,12 +984,13 @@ tankers 7–10% abnormal (April, June 2025), and our reopening odds run
 now roughly cancel. Long duration, yes — but no longer the page's best
 expression of our variant, and hulls remain S2 targets.
 <br><br>
-<b>Energy equity — clean war-beta, wrong-way tilt.</b> Still the cleanest
+<b>Energy equity — clean war-beta, no variant.</b> Still the cleanest
 tactical escalation instrument (sold the June deal, bought its collapse,
-largest S3-day edge). But precisely because it loses 6–9% market-adjusted in
-resolution weeks, our above-market reopening odds make the <em>variant</em>
-tilt negative: the right vehicle for a pure escalation view is, on our own
-probabilities, not a bucket to be overweight.
+largest S3-day edge). But because it loses 6–9% market-adjusted in
+resolution weeks, our above-market reopening odds offset the escalation
+benefit and leave the <em>variant</em> tilt at approximately zero: the right
+vehicle for expressing a pure escalation view is, on our own probabilities,
+not a bucket we would overweight on the variant.
 <br><br>
 <b>Gulf markets — the lateral axis, priced in Riyadh.</b> A persistent ~10%
 war discount, a negative S3-day edge, little détente recovery, and a modestly
@@ -1074,12 +1089,12 @@ except Exception as exc:  # noqa: BLE001
 # VII. CATALYSTS & TRIPWIRES
 # =========================================================================== #
 st.markdown("## VIII. Catalysts and tripwires")
-st.markdown("""
+st.markdown(f"""
 <p class="lede">
 <b>Upside catalysts for the persistence view:</b> a strike on Gulf
 desalination or power (regime reclassification toward sustained S3 — our
 primary tripwire); interceptor-rationing reports from Gulf capitals;
-Polymarket December odds fading below ~45%. <b>Falsifiers:</b> a ceasefire
+Polymarket December odds fading below ~45%. <b>Timing catalyst:</b> the Iranian fiscal runway ({_runway_txt}, on IMF usable-reserve figures) implies a settlement-pressure window opening around Q4-2026; we regard a settlement born of exhaustion as the one variety with durability prospects. <b>Falsifiers:</b> a ceasefire
 surviving past the six-week hazard peak identified in the ceasefire
 literature; transits holding above 60 for two consecutive weeks (grades our
 ledger entries against us); the scorecard's settlement-decay or audience-cost

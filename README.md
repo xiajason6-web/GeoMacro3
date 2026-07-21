@@ -24,8 +24,9 @@ for Aug/Sep/Dec 2026). The daily brief and commit log are the audit trail.
   underprices the war" thesis was dead on arrival; the remaining divergences
   are in the curve back-end, the horizontal (Gulf-infrastructure) axis, and
   novel-event convexity.
-- **Of Brent ~$82, ~$26 is war premium** (fundamentals control: pre-war OLS on
-  copper/USD/rates/S&P); the futures curve keeps only ~54% of it at 12M.
+- **Roughly $28 (± $10) of Brent ~$82 is war premium** (fundamentals control:
+  pre-war OLS on copper/USD/rates/S&P/EIA crude inventories); the futures curve
+  keeps only ~half of it at 12M.
 - **Horizontal Gulf-infrastructure risk is priced in European gas (TTF +57%
   vs pre-war, Henry Hub flat), not in oil** — visible only cross-market.
 - **All-out-war excursions are likely; sustained all-out war is not**
@@ -38,7 +39,7 @@ for Aug/Sep/Dec 2026). The daily brief and commit log are the audit trail.
 ## Method, in one paragraph
 
 Weekly regime classification (S0 lull → S5 deal) from IMF PortWatch transits +
-an LLM-coded event stream (versioned frozen prompts; inter-coder agreement 82%
+an LLM-coded event stream (versioned frozen prompts; inter-coder agreement 82%, chance-corrected κ 0.72
 on rungs). Transitions follow a conjugate Dirichlet–multinomial posterior with
 **three voices**: a Mearsheimer structural prior (whose weight is *derived
 live* from a scorecard grading his testable claims against the data), six
