@@ -521,8 +521,9 @@ with tab_score:
               delta_color="off")
     m2.metric("Derived prior strength", f"{sc['strength']:.2f}",
               "feeds the slider (auto mode)", delta_color="off")
-    dw = 23.0 / (23.0 + sc["strength"] * 88.0)
-    m3.metric("Implied posterior", f"{dw:.0%} data / {1-dw:.0%} prior",
+    _tot = 23.0 + 68.0 + sc["strength"] * 88.0
+    m3.metric("Implied posterior",
+              f"{23/_tot:.0%} live / {68/_tot:.0%} analogs / {sc['strength']*88/_tot:.0%} prior",
               delta_color="off")
     st.divider()
     LABELS = {

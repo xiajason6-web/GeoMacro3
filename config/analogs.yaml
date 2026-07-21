@@ -1,0 +1,71 @@
+# Analog-conflict corpus for the transition fit (ASSUMPTIONS.md #1, queue #1).
+#
+# Each conflict is coded as dated SEGMENTS of the S0-S5 taxonomy. A segment of
+# state X lasting w weeks contributes (w-1) X->X self-transitions and one
+# X->next transition. Each conflict's count matrix is then NORMALIZED to
+# `mass_per_conflict` pseudo-counts and scaled by its relevance `weight` —
+# without normalization the 7-year Tanker War would swamp everything; with it,
+# each analog is "one discounted war's worth of evidence."
+#
+# CODING NOTES (mapping judgments, documented):
+# - Tanker War: Hormuz never actually closed (transits stayed high), so the
+#   strict S2 transit criterion never fired historically. We map "sustained
+#   two-sided war on commercial shipping" to S2 by SEMANTICS, not transits.
+# - Segments are month-precision where week precision isn't available.
+# - Sources: Strauss Center Tanker War chronology; Britannica; USNI Proceedings
+#   1988; Wikipedia April/October 2024 strikes, 2025 Israel-Iran war (Jun 13-24,
+#   ceasefire Jun 24 HELD); Soleimani strike + Al-Asad retaliation Jan 2020;
+#   Abqaiq-Khurais Sep 14 2019; May-Jun 2019 tanker limpet attacks.
+#
+# Relevance weights (judgment, 0-1): how similar is the conflict to THIS war
+# (Gulf theater, Iran principal, maritime/energy dimension, US involvement)?
+
+mass_per_conflict: 20     # pseudo-count budget per conflict before weighting
+                          # (~ comparable to our 23 observed live transitions)
+
+conflicts:
+  tanker_war_1984_88:
+    weight: 0.6           # same theater+mechanism, different principal dyad (Iraq-Iran)
+    segments:
+      - {start: 1981-05-01, end: 1984-02-29, state: S1}   # phase 1: one-sided Iraqi anti-shipping, Iran holds fire
+      - {start: 1984-03-01, end: 1984-04-30, state: S2}   # phase 2 opens: sustained two-sided tanker war
+      - {start: 1984-05-01, end: 1984-06-15, state: S3}   # Iran hits Kuwaiti tanker nr Bahrain, Saudi tanker in Saudi waters
+      - {start: 1984-06-16, end: 1988-03-31, state: S2}   # the long grind: 450+ ships attacked over the war
+      - {start: 1988-04-01, end: 1988-04-30, state: S4}   # Praying Mantis: direct US-Iran naval battle
+      - {start: 1988-05-01, end: 1988-07-31, state: S2}   # tail of the grind
+      - {start: 1988-08-01, end: 1988-10-31, state: S5}   # UN ceasefire Aug 8 1988 — HELD
+      - {start: 1988-11-01, end: 1989-03-31, state: S0}   # durable exit
+
+  gulf_crisis_2019:
+    weight: 0.5           # same theater, shadow-war intensity (no open state war)
+    segments:
+      - {start: 2019-05-01, end: 2019-08-31, state: S2}   # limpet attacks Fujairah/Gulf of Oman, tanker seizures, drone shootdown
+      - {start: 2019-09-01, end: 2019-09-30, state: S3}   # Abqaiq-Khurais: 5.7 Mbpd offline, world's largest processing facility
+      - {start: 2019-10-01, end: 2019-12-31, state: S1}   # decay without any deal
+      - {start: 2020-01-01, end: 2020-01-02, state: S0}   # (bridge; Soleimani coded separately)
+
+  soleimani_2020:
+    weight: 0.5           # decapitation excursion + calibrated exit
+    segments:
+      - {start: 2020-01-03, end: 2020-01-09, state: S4}   # US kills Quds commander = regime-target op
+      - {start: 2020-01-10, end: 2020-01-16, state: S1}   # Al-Asad ballistic retaliation, deliberately casualty-free
+      - {start: 2020-01-17, end: 2020-03-31, state: S0}   # mutual de-escalation, no deal needed
+
+  apr_2024_exchange:
+    weight: 0.5           # first direct Iran->Israel state strike; calibrated
+    segments:
+      - {start: 2024-04-13, end: 2024-04-26, state: S1}   # 300+ drones/missiles; Israeli Isfahan response Apr 19
+      - {start: 2024-04-27, end: 2024-07-31, state: S0}
+
+  oct_2024_exchange:
+    weight: 0.5
+    segments:
+      - {start: 2024-10-01, end: 2024-10-31, state: S1}   # ~180 missiles Oct 1; Israeli response Oct 26
+      - {start: 2024-11-01, end: 2025-01-31, state: S0}
+
+  twelve_day_war_2025:
+    weight: 0.8           # most similar: US+Israel vs Iran, nuclear targets, decapitation
+    segments:
+      - {start: 2025-06-13, end: 2025-06-24, state: S4}   # Israeli decapitation+nuclear campaign; US B-2 Fordow strike; Iran barrages
+      - {start: 2025-06-25, end: 2025-07-31, state: S5}   # ceasefire Jun 24 — HELD
+      - {start: 2025-08-01, end: 2026-01-31, state: S0}   # durable until THIS war's Feb 2026 opening

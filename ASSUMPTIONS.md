@@ -188,13 +188,40 @@ Two structural lessons:
    is exactly when the AHP pass (queue #3) becomes worth doing. Watch for
    sub-score divergence as the trigger.
 
+## Analog-conflict transition fit — DONE (2026-07-21)
+
+`config/analogs.yaml` + `src/model/analogs.py`: six conflicts coded to dated
+S0–S5 segments (Tanker War 1981–89, Gulf crisis 2019, Soleimani 2020, Apr/Oct
+2024 exchanges, 12-day war 2025), per-conflict normalized to a 20-pseudo-count
+budget × relevance weight (0.5–0.8). Total 68 analog pseudo-counts join the
+posterior as a third voice: `strength·prior + analogs + live_counts`.
+
+What the corpus taught the model (at strength 1, covariates on):
+- **S0 @3m 9% → 24%** — the interstate base rate ("most wars end") finally has
+  mass; the queue's base-rate reconciliation is now IN the model, not a memo.
+- S3 @3m 34% → 25% — 2019 precedent: Gulf-infra escalation can decay dealless.
+- Mean weeks in S2+ 8.1 → 9.5 — conditional S2 persistence UP (Tanker War
+  grind) even as overall occupancy shifts toward S0. Both Mearsheimer-relevant
+  claims sharpened, in opposite directions — the mark of real evidence.
+- P(visit S5 @3m) 57% → 47% — analogs de-escalated *without* deals.
+- S4 row: 43%→S1, 26%→S5, 30% self — S4 excursions resolve fast (independent
+  support for the v2 unsustainable-S4 claim).
+- S5 held in 1988 and 2025 — the corpus argues BOTH sides of deal-decay.
+
+Honest limits: coding the analogs to S0–S5 involved mapping judgments
+(documented in analogs.yaml — e.g., Tanker War "S2 by semantics, not transits");
+the 20-count budget and relevance weights are declared knobs (sweepable); the
+C4 knob-band barely narrowed (23–40%) because it is driven by covariate effect
+sizes, not hazard levels — narrowing it needs event-study elasticities (#5).
+
 ## Priority queue for further grounding
 
-1. **Analog-conflict transition fit** (#1) — biggest object, clearest path;
-   Tanker War + 2019/2020/2024/2025 episodes coded to S0–S5. Also yields the
-   HMM emissions (#4) and event-study elasticities (#5) from the same corpus.
-2. **Sensitivity sweep** on the arbitrary denominators and effect sizes (#5,
-   #6) — which conclusions survive ±50%?
-3. **Solo-AHP pass** on scorecard weights (#3), documented in this file.
-4. Base-rate reconciliation note in the daily brief: report P(S5) vs the
-   interstate-war base rate so the Mearsheimer bet stays visible.
+1. ~~Analog-conflict transition fit~~ **DONE** (above).
+2. ~~Sensitivity sweep~~ **DONE** (results above). Re-run after any knob change:
+   `make sensitivity`.
+3. **Event-study elasticities** for covariate effect sizes (#5) — the remaining
+   lever that would actually narrow the C4 band; estimable from the analog
+   corpus + this war's event studies.
+4. **Solo-AHP pass** on scorecard weights (#3) — parked until sub-scores
+   diverge (currently moot; see sweep lesson 2).
+5. HMM soft-label emissions (#4) — now feasible against the analog corpus.

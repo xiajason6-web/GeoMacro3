@@ -158,8 +158,10 @@ def main() -> int:
         print(f"  {name:<24} {s['score']:.2f} |{bar:<20}| {s['detail']}")
     print(f"\n  Mearsheimer-fit M = {r['M']:.2f}  ->  derived prior_strength = "
           f"{r['derived_strength']:.2f}")
-    dw = 23.0 / (23.0 + r["derived_strength"] * 88.0)
-    print(f"  => posterior {dw:.0%} data / {1-dw:.0%} prior. The war is "
+    # mass split incl. the analog corpus (~68 pseudo-counts; see model/analogs.py)
+    tot = 23.0 + 68.0 + r["derived_strength"] * 88.0
+    print(f"  => posterior ~{23/tot:.0%} live data / ~{68/tot:.0%} analogs / "
+          f"~{r['derived_strength']*88/tot:.0%} prior. The war is "
           f"~{r['M']:.0%} Mearsheimer-shaped right now.")
     print("  (weights are judgment at n=1; sub-scores degrade gracefully if the "
           "war deviates — a durable deal would drop deals_decay + face_lock.)")

@@ -38,6 +38,7 @@ def posterior_matrix(
     labels: pd.DataFrame,
     prior_strength: float | None = None,
     use_covariates: bool = False,
+    use_analogs: bool = True,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
     """Returns (posterior mean T, prior pseudocount matrix, observed count matrix,
     covariate_info). prior_strength overrides config when given (the dashboard's
@@ -62,11 +63,24 @@ def posterior_matrix(
     for t in range(len(P) - 1):
         counts += np.outer(P[t], P[t + 1])
 
-    post = prior + counts
+    # Third voice: analog-conflict pseudo-counts (Tanker War, 2019 Gulf crisis,
+    # Soleimani 2020, 2024 exchanges, 2025 12-day war) — per-conflict normalized
+    # and relevance-weighted. See src/model/analogs.py and ASSUMPTIONS.md #1.
+    analog = np.zeros((6, 6))
     cov_info: dict = {}
+    if use_analogs:
+        try:
+            from src.model.analogs import build as build_analogs
+            analog, _ = build_analogs()
+        except Exception as exc:  # noqa: BLE001 — missing corpus => prior+data only
+            cov_info["analogs_note"] = f"unavailable: {str(exc)[:50]}"
+
+    post = prior + analog + counts
     if use_covariates:
         from src.model.covariates import apply as apply_cov
-        post, cov_info = apply_cov(post)
+        post, cov_extra = apply_cov(post)
+        cov_info.update(cov_extra)
+    cov_info["analog_mass"] = float(analog.sum())
     T = post / post.sum(axis=1, keepdims=True)
     return T, prior, counts, cov_info
 
@@ -134,17 +148,26 @@ def touch_probabilities(T: np.ndarray, p0: np.ndarray, max_weeks: int = 52) -> d
     }
 
 
-def run(prior_strength: float | None = None, use_covariates: bool = True) -> dict:
-    """use_covariates defaults True: the live model now runs with the M9
-    endurance layer wired in. Pass False for the static-prior baseline."""
+def run(prior_strength: float | None = None, use_covariates: bool = True,
+        use_analogs: bool = True) -> dict:
+    """use_covariates defaults True (M9 endurance layer); use_analogs defaults
+    True (analog-conflict pseudo-counts). Pass False for baselines."""
     labels = label_weeks()
-    T, prior, counts, cov_info = posterior_matrix(labels, prior_strength, use_covariates)
+    T, prior, counts, cov_info = posterior_matrix(
+        labels, prior_strength, use_covariates, use_analogs)
     p0 = labels[[f"p_{s}" for s in STATES]].iloc[-1].values.astype(float)
     p0 = p0 / p0.sum()
 
     fc = horizon_forecast(T, p0)
     touch = touch_probabilities(T, p0)
-    data_weight = counts.sum() / (counts.sum() + prior.sum())
+    analog_mass = cov_info.get("analog_mass", 0.0)
+    total_mass = counts.sum() + prior.sum() + analog_mass
+    data_weight = counts.sum() / total_mass
+    cov_info["mass_decomposition"] = {
+        "prior": float(prior.sum() / total_mass),
+        "analogs": float(analog_mass / total_mass),
+        "live_data": float(counts.sum() / total_mass),
+    }
 
     return {
         "labels": labels, "T": T, "prior": prior, "counts": counts,
@@ -167,8 +190,13 @@ def main() -> int:
 
     print(f"[regime] current state distribution: "
           + ", ".join(f"{s}={p:.0%}" for s, p in zip(STATES, r["p0"]) if p > 0.01))
-    print(f"[regime] posterior is {r['data_weight']:.0%} data / "
-          f"{1-r['data_weight']:.0%} prior (by pseudo-count mass)")
+    md = (r.get("covariates") or {}).get("mass_decomposition")
+    if md:
+        print(f"[regime] posterior mass: {md['prior']:.0%} Mearsheimer prior / "
+              f"{md['analogs']:.0%} analog conflicts / {md['live_data']:.0%} live data")
+    else:
+        print(f"[regime] posterior is {r['data_weight']:.0%} data / "
+              f"{1-r['data_weight']:.0%} prior (by pseudo-count mass)")
     ci = r.get("covariates") or {}
     if ci:
         print(f"[regime] M9 endurance covariates ON: munitions p_a={ci['p_a']:.2f} "

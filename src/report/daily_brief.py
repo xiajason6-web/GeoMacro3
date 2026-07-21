@@ -91,8 +91,14 @@ def section_state() -> list[str]:
         )
     except (FileNotFoundError, Exception):  # noqa: BLE001
         pass
-    lines.append(f"- Posterior weight: {reg['data_weight']:.0%} data / "
-                 f"{1 - reg['data_weight']:.0%} prior")
+    md = (reg.get("covariates") or {}).get("mass_decomposition")
+    if md:
+        lines.append(f"- Posterior mass: {md['prior']:.0%} Mearsheimer prior / "
+                     f"{md['analogs']:.0%} analog conflicts (Tanker War, 2019, "
+                     f"2020, 2024×2, 2025) / {md['live_data']:.0%} live data")
+    else:
+        lines.append(f"- Posterior weight: {reg['data_weight']:.0%} data / "
+                     f"{1 - reg['data_weight']:.0%} prior")
     try:
         from src.model.scorecard import compute as _sc
         sc = _sc()
