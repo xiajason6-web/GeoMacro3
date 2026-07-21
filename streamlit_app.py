@@ -434,7 +434,7 @@ k1.metric("A peace that HOLDS (3m)", f"{f3[5]:.0%}",
           if _b3 and _dn_lo is not None else "settlements decay in ~3 weeks here",
           delta_color="off")
 k2.metric("War still on at year-end", f"{reg.get('dec_war_on', 0):.0%}",
-          "state occupancy on Dec 31 — lulls happen; endings don't",
+          "model state-occupancy estimate for December 31",
           delta_color="off")
 k3.metric("The grind persists (3m)", f"{p_s2plus:.0%}",
           (f"80% CI {_b3['s2plus_lo']:.0%}–{_b3['s2plus_hi']:.0%}") if _b3
@@ -445,72 +445,78 @@ if war_prem is not None:
     _pb = float(fd_h.get("premium_band", 0) or 0)
     k5.metric("War premium in oil",
               f"${war_prem:+.0f} ± {_pb:.0f}/bbl" if _pb else f"${war_prem:+.0f}/bbl",
-              f"curve prices {1-kept:.0%} of it GONE by next summer — durability "
-              "we don't see" if kept else "", delta_color="off")
+              f"12M curve prices {1-kept:.0%} of it away — a fade we do not underwrite" if kept else "", delta_color="off")
 
 st.markdown(f"""
 <p class="lede">
-<em>The market is overpaying for the possibility that this war ends
-cleanly.</em> Our framework puts a settlement that actually holds at
-<b>{f3[5]:.0%}</b> over three months, and the odds the war is genuinely over
-by New Year at <b>{1-reg.get('dec_war_on', 0.8):.0%}</b> — yet the oil
-complex prices a durable ending far more richly: the options market pays
-{_dn_lo:.0%}–{_dn_hi:.0%} for a sub-$75 world that requires one, and the
-futures curve prices roughly half the war premium out of existence by next
-summer. The disagreement is <b>not</b> about whether quiet spells occur — they
-will — but about whether they <em>last</em>. Both 2026 ceasefires died inside
-a month; the political structure (§III) says the next ones do too, until
-Iran's fiscal clock forces one born of exhaustion.
+<b>Our central view: the oil complex materially overprices durable
+resolution.</b> We estimate a {f3[5]:.0%} probability that a settlement
+reached over the next three months is still in force at the end of that
+horizon, and a {1-reg.get('dec_war_on', 0.8):.0%} probability that the
+conflict has genuinely concluded by year-end. Against this, market pricing
+embeds considerably higher resolution odds: the crude options market assigns
+{_dn_lo:.0%}–{_dn_hi:.0%} to a sub-$75 outcome within roughly a month — a
+scenario that, in our assessment, requires a durable settlement — and the
+futures curve removes approximately half of the prevailing war premium by
+mid-2027. We emphasize that the disagreement concerns <em>persistence</em>,
+not incidence: we expect intermittent de-escalation episodes, and are indeed
+above consensus on their likelihood. Both 2026 ceasefires collapsed within a
+month of announcement; the structural analysis in §III implies subsequent
+attempts share that profile until Iran's fiscal position forces a settlement
+of a different character.
 </p>
 """, unsafe_allow_html=True)
 
-st.subheader("The durability ladder — the claim, rung by rung")
+st.subheader("Exhibit: resolution probabilities by durability threshold — model vs market-implied")
 try:
     _mkt_touch = f"{mkt_dec:.0%}" if mkt_dec is not None else "—"
     ladder = pd.DataFrame([
         {"claim (weakest → strongest)": "Some lull touches normal (any single day by Dec 31)",
          "our model": f"{reg['model_cdf'].get('2026-12-31', 0):.0%}",
          "the market": f"{_mkt_touch} (Polymarket touch contract)",
-         "who is higher": "US — we expect lulls"},
+         "assessment": "model above consensus — transient lulls expected"},
         {"claim (weakest → strongest)": "Normalization holds ~2 straight weeks by Dec 31",
          "our model": f"{reg.get('dec_durable', 0):.0%}",
          "the market": "no instrument prices this",
-         "who is higher": "—"},
+         "assessment": "not separately priced"},
         {"claim (weakest → strongest)": "A signed final deal by Aug 31",
          "our model": f"~{reg['forecasts']['1m'][5]:.0%} (S5 occupancy proxy)",
          "the market": "7.5% (Polymarket deal contract)",
-         "who is higher": "agreement — no edge"},
+         "assessment": "in line with consensus — no variant"},
         {"claim (weakest → strongest)": "A settlement still holding at 3 months",
          "our model": f"{f3[5]:.0%}  [{_s5lo:.0%}–{_s5hi:.0%}]" if _b3 else f"{f3[5]:.0%}",
          "the market": (f"{_dn_lo:.0%}–{_dn_hi:.0%} (options sub-$75 tail)"
                         if _dn_lo is not None else "options downside tail"),
-         "who is higher": "MARKET, 2–3× — the mispricing"},
+         "assessment": "market 2–3× our estimate — the core mispricing"},
         {"claim (weakest → strongest)": "The war is over at year-end",
          "our model": f"{1-reg.get('dec_war_on', 0.8):.0%}",
          "the market": f"~{1-kept:.0%} of premium priced out by 12M (curve)" if kept else "curve back end",
-         "who is higher": "MARKET — the back end assumes an ending"},
+         "assessment": "curve embeds a resolution we do not underwrite"},
     ])
     st.dataframe(ladder, hide_index=True,
                  column_config={"claim (weakest → strongest)":
                                 st.column_config.TextColumn(width="large")})
-    st.markdown('<p class="source">The inversion is the finding: we are MORE '
-                'optimistic than the market at the weak end of the ladder '
-                '(lulls happen) and far LESS at the strong end (endings do '
-                'not). The market prices durability as if it were a straight '
-                'interpolation from the lull odds; the deal-decay record '
-                '(two ceasefires, ~3-week half-life, no monitoring mechanisms) '
-                'says the ladder bends hard between rung two and rung four. '
-                'Caveats: the options tail includes non-war paths to sub-$75 '
-                '(demand shocks), so rung four overstates the gap somewhat; '
-                'rung five maps a price statement onto a state claim. '
-                'Rungs one, two and five are graded ledger entries (§IX).</p>',
+    st.markdown('<p class="source">The pattern across thresholds is the '
+                'finding: our estimates sit above consensus at low durability '
+                'thresholds and well below market-implied levels at high '
+                'ones. Market pricing is consistent with interpolating '
+                'resolution durability from near-term lull probabilities; the '
+                'empirical settlement record (two ceasefires, ~3-week median '
+                'survival, no verification or monitoring mechanisms of the '
+                'kind the ceasefire literature associates with durability) '
+                'argues the relationship is materially non-linear. '
+                'Methodological notes: the options tail includes non-conflict '
+                'paths to sub-$75 (demand deterioration), which overstates the '
+                'gap at that threshold; the final row maps a price statement '
+                'onto a state estimate. The first, second and final rows are '
+                'standing entries in the graded ledger (§IX).</p>',
                 unsafe_allow_html=True)
 except Exception as exc:  # noqa: BLE001
     st.info(f"ladder unavailable: {exc}")
 
 st.markdown(f"""
 <p class="lede">
-<b>Where we differ from consensus, in order of conviction.</b>
+<b>Variant views relative to consensus, in order of conviction.</b>
 <b>(1) Resolution durability</b> — the ladder above: fade the durable-peace
 tail, always carrying cheap deal-shock protection, because settlement risk
 here is an overnight gap. <b>(2) Duration at the back of the curve:</b> the
