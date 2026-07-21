@@ -151,6 +151,31 @@ built; set cutoffs where they separate real from false signals historically.
 
 ---
 
+## Sensitivity sweep results (2026-07-20, `make sensitivity`)
+
+One-at-a-time ±50% on every arbitrary knob (effect sizes, pressures, soft-label
+masses, scorecard weights) + two adversarial combos (ALL-HAWK, ALL-DOVE).
+34 perturbations. Verdicts on the headline conclusions:
+
+| Conclusion | Base | Range across sweep | Verdict |
+|---|---|---|---|
+| C1 P(S2+ @3m) — war persists | 69% | 64–73% | **ROBUST** (never loses majority) |
+| C2 P(S3 @3m) — widening/attractor | 34% | 27–42% | **ROBUST** (always ≥1.8× the uninformed 15%) |
+| C3 P(S4 @3m) — small all-out tail | 4% | 2–5% | **ROBUST** (never exceeds 5%) |
+| C4 P(touch S4 before S5) | 35% | 24–41% | **LEVEL-FRAGILE** — direction fine, level knob-sensitive; quote "one-in-four to two-in-five," never "39%" |
+| C5 derived prior_strength | 3.19 | 3.16–3.23 | **ROBUST** — near-invariant to weights |
+
+Two structural lessons:
+1. **No single knob matters much** — the largest single-knob moves are S3_PUMP/
+   p_c (C2 ±5pp). Only the correlated adversarial combos move conclusions
+   meaningfully. The model's claims rest on the DATA + prior shape, not on any
+   one conviction number.
+2. **The scorecard's equal-weights worry is currently moot:** derived strength
+   is invariant to ±50% reweighting *because all five sub-scores agree*
+   (0.69–0.80). Weights only start mattering when restrictions diverge — which
+   is exactly when the AHP pass (queue #3) becomes worth doing. Watch for
+   sub-score divergence as the trigger.
+
 ## Priority queue for further grounding
 
 1. **Analog-conflict transition fit** (#1) — biggest object, clearest path;

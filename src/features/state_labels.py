@@ -17,6 +17,16 @@ import pandas as pd
 
 from src.common import load_config, read_latest
 
+# Soft-label mass splits — ARBITRARY-tier assumptions (see ASSUMPTIONS.md #4).
+# Module-level so the sensitivity sweep can perturb them; defaults unchanged.
+MASS = {
+    "s0_high": 0.7,   # frac >= 0.80: S0 gets this, S1 the rest
+    "s1_mid": 0.8,    # 0.30 <= frac < 0.80: S1 gets this, S2 the rest
+    "s4_upgrade": 0.7,   # S4-evidence week: prior masses scaled, S4 gets this
+    "s3_upgrade": 0.45,  # S3-evidence week: S3 gets this share
+    "s5_upgrade": 0.65,  # deal + recovery week: S5 gets this share
+}
+
 
 def transit_weekly() -> pd.DataFrame:
     cfg = load_config("sources")["portwatch"]
@@ -75,22 +85,25 @@ def label_weeks(start: str = "2026-02-01") -> pd.DataFrame:
 
         # transit backbone
         if frac >= 0.80:
-            p["S0"] += 0.7; p["S1"] += 0.3
+            p["S0"] += MASS["s0_high"]; p["S1"] += 1 - MASS["s0_high"]
         elif frac >= 0.30:
-            p["S1"] += 0.8; p["S2"] += 0.2
+            p["S1"] += MASS["s1_mid"]; p["S2"] += 1 - MASS["s1_mid"]
         else:
             p["S2"] += 1.0
 
         # event-layer upgrades (S3 shares mass with the maritime state rather
         # than replacing it — the "rung or transition" question stays open)
         if r["s4_evidence"] > 0:
-            p = {k: v * 0.3 for k, v in p.items()}; p["S4"] += 0.7
+            m = MASS["s4_upgrade"]
+            p = {k: v * (1 - m) for k, v in p.items()}; p["S4"] += m
         elif r["s3_evidence"] > 0:
-            p = {k: v * 0.55 for k, v in p.items()}; p["S3"] += 0.45
+            m = MASS["s3_upgrade"]
+            p = {k: v * (1 - m) for k, v in p.items()}; p["S3"] += m
 
         # S5 = deal evidence AND recovery underway
         if r["s5_evidence"] > 0 and (trend > 1.0 or frac > 0.5):
-            p = {k: v * 0.35 for k, v in p.items()}; p["S5"] += 0.65
+            m = MASS["s5_upgrade"]
+            p = {k: v * (1 - m) for k, v in p.items()}; p["S5"] += m
 
         tot = sum(p.values())
         probs.append({f"p_{k}": v / tot for k, v in p.items()})

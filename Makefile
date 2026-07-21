@@ -94,6 +94,9 @@ monitor:
 signals:
 	$(PY) -m src.alpha.signals
 
+sensitivity:
+	$(PY) -m src.alpha.sensitivity
+
 backtest:
 	$(PY) -m src.alpha.backtest
 
