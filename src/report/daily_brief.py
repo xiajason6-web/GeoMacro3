@@ -233,6 +233,26 @@ def section_signals() -> list[str]:
     return lines
 
 
+def section_track_record() -> list[str]:
+    lines = ["", "## Track record", ""]
+    try:
+        from src.report.calls import grade, summary
+        doc = grade(write=True)
+        s = summary(doc)
+        lines.append(f"- **{s['n_calls']} public calls** since {s['first_call']}: "
+                     f"{s['n_open']} open, {s['n_resolved']} resolved"
+                     + (f", **Brier {s['brier']:.3f}**" if s["brier"] is not None else ""))
+        for c in doc["calls"]:
+            if c.get("status") == "resolved":
+                lines.append(f"- ● [{c['made']}] p={c['p']:.0%} → **{c['outcome']}**: "
+                             f"{c['claim'][:70]}")
+        lines.append("- Ledger: `calls/ledger.yaml` (append-only, git-timestamped, "
+                     "auto-graded)")
+    except Exception as exc:  # noqa: BLE001
+        lines.append(f"- ledger unavailable: {exc}")
+    return lines
+
+
 def section_changes(body: str) -> list[str]:
     """Diff headline numbers against the most recent prior brief."""
     lines = ["", "## 4. What changed", ""]
@@ -267,6 +287,7 @@ def main() -> int:
     parts += section_state()
     parts += section_pq()
     parts += section_signals()
+    parts += section_track_record()
     body = "\n".join(parts)
     parts += section_changes(body)
     parts += ["", "---", "_Research framework, not financial advice. Q levels "

@@ -67,7 +67,23 @@ def _panel() -> pd.DataFrame:
     yfd.columns = list(YF_SERIES.keys())
     yfd.index = pd.to_datetime(yfd.index).tz_localize(None)
     df = df.join(yfd).sort_index().ffill().dropna()
-    return df
+    # optional 6th driver: EIA weekly crude stocks (key-gated ingest; see
+    # src/ingest/eia.py). Joins automatically once the lake has it.
+    try:
+        from src.common import read_latest
+        eia = read_latest("eia_stocks").copy()
+        eia["obs_date"] = pd.to_datetime(eia["obs_date"])
+        s = eia.set_index("obs_date")["crude_stocks_kbbl"]
+        df = df.join(s.rename("crude_stocks")).ffill()
+        if df["crude_stocks"].notna().sum() > 20:
+            global DRIVERS
+            if "crude_stocks" not in DRIVERS:
+                DRIVERS = DRIVERS + ["crude_stocks"]
+        else:
+            df = df.drop(columns=["crude_stocks"])
+    except FileNotFoundError:
+        pass
+    return df.dropna()
 
 
 def decompose() -> dict:

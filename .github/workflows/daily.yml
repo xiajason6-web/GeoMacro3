@@ -1,0 +1,72 @@
+# Daily refresh — the credibility engine. Runs the pipeline every day, grades
+# the public calls ledger, and commits the brief + ledger back to the repo so
+# the track record is git-timestamped and publicly auditable ("ran every day
+# since July" — with the commit log to prove it).
+#
+# Secrets (optional): ANTHROPIC_API_KEY enables the live LLM event coder;
+# EIA_API_KEY enables the inventories driver. Without them the pipeline runs
+# on frozen coded history + keyless sources — degraded, never broken.
+name: daily-refresh
+
+on:
+  schedule:
+    - cron: "30 13 * * *"   # 13:30 UTC daily (morning US/Eastern)
+  workflow_dispatch: {}
+
+concurrency:
+  group: daily-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      # ingest: every source tolerant — a flaky API degrades, never kills the run
+      - name: ingest
+        run: |
+          python -m src.ingest.portwatch    || true
+          python -m src.ingest.polymarket   || true
+          python -m src.ingest.prices       || true
+          python -m src.market_implied.curve || true
+          python -m src.market_implied.rnd   || true
+          python -m src.ingest.newsrss       || true
+          python -m src.ingest.eia           || true
+      - name: coded history (frozen spine + live enrichment if key present)
+        run: |
+          python -m src.coding.load_backfill
+          python -m src.coding.llm_coder || true
+      - name: models
+        run: |
+          python -m src.market_implied.predmkt || true
+          python -m src.features.horizontal_spread || true
+          python -m src.features.munitions   || true
+          python -m src.model.scorecard      || true
+          python -m src.features.fundamentals || true
+          python -m src.features.premia      || true
+      - name: brief + grade calls
+        run: |
+          python -m src.report.daily_brief
+          python -m src.report.calls
+
+      - name: commit track record
+        run: |
+          git config user.name "daily-refresh-bot"
+          git config user.email "actions@github.com"
+          git add -f data/briefs/*.md || true
+          git add calls/ledger.yaml
+          git diff --cached --quiet || git commit -m "daily: brief + graded calls $(date -u +%F) [skip ci]"
+          git push

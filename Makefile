@@ -5,7 +5,7 @@ PY = .venv/bin/python
         regime events habituation hawkes backfill
 
 # Daily driver: land fresh data, code new events, rebuild derived layers, brief.
-refresh: ingest code models brief
+refresh: ingest code models brief calls
 
 # --- ingest layer ---------------------------------------------------------
 ingest: portwatch polymarket prices curve rnd headlines
@@ -85,6 +85,9 @@ fingerprint:
 	$(PY) -m src.market_implied.fingerprint
 
 # --- reports & research ---------------------------------------------------
+calls:
+	$(PY) -m src.report.calls
+
 brief:
 	$(PY) -m src.report.daily_brief
 

@@ -198,6 +198,24 @@ should *derive* the prior-strength slider.
 - Remaining upgrades (not built): EIA/FRED-key fundamentals (fuller balance),
   LLM munitions sub-coder, per-restriction scorecard weight tuning.
 
+## Track record & ops (2026-07-21)
+- **Public calls ledger** (`calls/ledger.yaml`, `make calls`): append-only,
+  git-timestamped, auto-graded (PortWatch + coded-event criteria), Brier-scored.
+  Seeded with 6 falsifiable calls incl. the three Hormuz-normalization horizons
+  quoted against same-day Polymarket. NEVER edit a committed call.
+- **GitHub Actions**: `daily.yml` runs the full tolerant pipeline daily at
+  13:30 UTC and commits brief + graded ledger back to the repo (public
+  timestamped record); `ci.yml` runs pytest on push. Secrets (optional):
+  ANTHROPIC_API_KEY (live coder), EIA_API_KEY (inventories driver).
+- **Inter-coder reliability** (`src/coding/reliability.py`): haiku-vs-sonnet on
+  the same window — rung-mix TV distance 0.08 (good), rung agreement 82%,
+  target_type 64% (weaker, known). Re-run occasionally.
+- **EIA ingest** (`src/ingest/eia.py`): key-gated (all keyless routes are dead —
+  FRED mirrors discontinued, WPSR CSVs gone). Activates the crude-stocks driver
+  in the fundamentals control automatically once EIA_API_KEY exists.
+- **CME options verdict**: futures option chains are NOT available via free
+  APIs (yfinance returns none); USO/BNO RND stays, caveat stands; paid upgrade.
+
 ## What accumulates value from here
 Every `make refresh` lands a new dated vintage. A1/A4 backtesting is impossible
 until a history of daily P and Q vintages exists — the system starts earning
