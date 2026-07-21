@@ -447,6 +447,16 @@ options market pays for downside consistent with a durable settlement;
 prediction markets price a final deal in single digits, and the empirical
 half-life of 2026 ceasefires is ~3 weeks. We fade the durable-peace tail while
 carrying cheap deal-shock protection against its arrival.
+<b>(4) The fiscal clock:</b> on IMF usable-reserve figures, Iran's
+blocked-export losses exhaust its accessible buffer in roughly 130 days — a
+forcing window in late 2026 that no instrument prices, because markets quote
+deal <em>odds</em>, not deal timing forced by cash. The common structure of
+all four: <em>the market prices this war's states; our framework prices its
+clocks</em> — the munitions clock, the fiscal clock, the deal-decay clock,
+and the futures calendar. Every disagreement we hold is about time, not
+events. A corollary worth stating now: a market trained by failed ceasefires
+will underreact to the real one — and the fiscal clock is the discriminator
+between a tactical truce and an exhausted one.
 </p>
 """, unsafe_allow_html=True)
 
