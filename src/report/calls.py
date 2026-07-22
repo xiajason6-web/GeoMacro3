@@ -112,7 +112,35 @@ def _grade_portwatch_on_date(c: dict) -> tuple[str, str] | None:
             f"7dMA {val:.0f} on {upto.index[-1].date()} (last obs before {on.date()})")
 
 
+def _grade_next_s5_brent(c: dict) -> tuple[str, str] | None:
+    """Framework discriminator: does the NEXT deal episode arrive in a week
+    with average Brent >= threshold (price-thermostat) or below it (fiscal
+    clock)? Resolves NO if no qualifying deal arrives by the deadline."""
+    ev = read_latest("coded_events").copy()
+    ev["date"] = pd.to_datetime(ev["date"], errors="coerce")
+    made, by = pd.Timestamp(str(c["made"])), pd.Timestamp(str(c["criteria"]["by"]))
+    s5 = ev[(ev["rung"] == "S5") & (ev["date"] > made) & (ev["date"] <= by)]
+    if len(s5):
+        d0 = s5.sort_values("date").iloc[0]["date"]
+        px = read_latest("prices")
+        bz = px[px["ticker"] == "BZ=F"].copy()
+        bz["obs_date"] = pd.to_datetime(bz["obs_date"])
+        wk = bz[(bz["obs_date"] >= d0 - pd.Timedelta(days=3))
+                & (bz["obs_date"] <= d0 + pd.Timedelta(days=3))]
+        if not len(wk):
+            return None  # wait for price data to cover the deal week
+        avg = float(pd.to_numeric(wk["close"], errors="coerce").mean())
+        ok = avg >= float(c["criteria"]["threshold"])
+        return ("YES" if ok else "NO",
+                f"deal {d0.date()}, Brent week-avg ${avg:.0f} "
+                f"({'thermostat' if ok else 'fiscal-clock'} regime)")
+    if pd.Timestamp(today_utc()) > by + pd.Timedelta(days=GRACE_DAYS):
+        return "NO", f"no deal episode arrived by {by.date()}"
+    return None
+
+
 GRADERS = {"portwatch_ma7_gte": _grade_portwatch,
+           "next_s5_brent": _grade_next_s5_brent,
            "portwatch_ma7_gte_consecutive": _grade_portwatch_consecutive,
            "portwatch_ma7_gte_on_date": _grade_portwatch_on_date,
            "coded_event": _grade_coded_event}

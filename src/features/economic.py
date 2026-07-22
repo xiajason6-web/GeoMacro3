@@ -56,6 +56,20 @@ def readings() -> dict:
     frac = _hormuz_frac()
 
     lo, hi = cfg["us_oil_pain"]["low"], cfg["us_oil_pain"]["high"]
+    # SPR adjustment (Shapiro): a drained reserve removes the buffer that lets
+    # Washington ride out price spikes, so the pain band shifts DOWN as SPR
+    # falls below its ~650 Mbbl historical full level. Declared mapping: up to
+    # -$15 on both band edges at a 300 Mbbl floor (tagged in ASSUMPTIONS.md).
+    spr_shift = 0.0
+    spr_mbbl = None
+    try:
+        eia = read_latest("eia_stocks")
+        if "spr_kbbl" in eia.columns and eia["spr_kbbl"].notna().any():
+            spr_mbbl = float(eia["spr_kbbl"].dropna().iloc[-1]) / 1000.0
+            spr_shift = 15.0 * float(np.clip((650.0 - spr_mbbl) / 350.0, 0, 1))
+    except FileNotFoundError:
+        pass
+    lo, hi = lo - spr_shift, hi - spr_shift
     us_pain = float(np.clip((brent - lo) / (hi - lo), 0, 1))
 
     ie = cfg["iran_export"]
@@ -77,6 +91,8 @@ def readings() -> dict:
         "iran_pain": iran_pain,
         "economic_pressure": p_b,
         "closer_to_cracking": shorter,
+        "spr_mbbl": spr_mbbl,
+        "us_pain_band": (lo, hi),
     }
 
 

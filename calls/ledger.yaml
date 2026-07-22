@@ -81,3 +81,11 @@ calls:
     criteria: {type: portwatch_ma7_gte_on_date, threshold: 60, "on": "2026-12-31"}
     comparison: "The occupancy question — the model's real view: 81% the war is still on at year-end"
     status: open
+
+  - id: 2026-07-22-deal-driver-discriminator
+    made: 2026-07-22
+    claim: "The next deal episode (first coded S5 event after this date) arrives by Dec 31 in a week whose average Brent is >= $105 — i.e., the Shapiro price-thermostat, not the Iranian fiscal clock, forces it"
+    p: 0.30
+    criteria: {type: next_s5_brent, threshold: 105, by: 2026-12-31}
+    comparison: "Framework discriminator: >=105 = deal under price pressure (Shapiro); <105 with Iran's reserves near exhaustion = deal born of fiscal exhaustion (Mearsheimer + IMF clock). Our lean is the fiscal clock, hence p=0.30. Evidence for the thermostat exists (corr -0.37; deals at $110/$91, re-escalation at $75) so this is a live disagreement, not a strawman"
+    status: open

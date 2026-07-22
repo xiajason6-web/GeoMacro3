@@ -43,6 +43,11 @@ S3_PUMP = 0.8          # CALIBRATED UP from 0.7. This war's weekly series:
 S5_DRIFT = 0.4         # DECLARED (unidentifiable): p_b ~0 all war, no
 #                        in-sample variation; 1988 exhaustion->ceasefire is one
 #                        qualitative episode. Face-lock argues keeping it small.
+THERMOSTAT = 0.3       # DECLARED (Shapiro): US oil-price pain throttles NEW
+#                        escalation - entries into S3/S4 damped by up to 30% at
+#                        maximal pain. Evidence: corr(Brent_t, escalation_t+1)
+#                        = -0.37 in-war; both 2026 deals arrived at $110/$91,
+#                        re-escalation at $75. Inert when us_oil_pain = 0.
 
 
 def munitions_pressure() -> dict:
@@ -133,8 +138,16 @@ def multiplier_matrix() -> tuple[np.ndarray, dict]:
     for r in (0, 1, 2, 3):
         M[r, 5] *= m_s5            # economic strain nudges toward a deal
 
+    # --- Shapiro thermostat: US price pain throttles NEW escalation ---
+    p_us = float(e.get("us_oil_pain", 0.0) or 0.0)
+    m_thermo = 1.0 - THERMOSTAT * p_us
+    M[1, 3] *= m_thermo            # entries into the lateral war damped
+    M[2, 3] *= m_thermo
+    for r in (0, 1, 2, 3):
+        M[r, 4] *= m_thermo        # and into all-out war (stacks on the S4 gate)
+
     return M, {"munitions": a, "spread": c, "economic": e,
-               "p_a": pa, "p_c": pc, "p_b": pb}
+               "p_a": pa, "p_c": pc, "p_b": pb, "p_us_thermo": p_us}
 
 
 def apply(post: np.ndarray) -> tuple[np.ndarray, dict]:

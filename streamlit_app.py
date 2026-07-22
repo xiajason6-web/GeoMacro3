@@ -1109,6 +1109,21 @@ scores breaking below 0.5, which mechanically de-weights the framework.
 <b>Systemic reclassification:</b> gold rallying concurrent with escalation —
 the market abandoning its supply-local read — would dominate every other
 signal on this page and warrants immediate de-risking of carry expressions.
+<br><br>
+<b>Framework watch (Mearsheimer vs Shapiro).</b> Jacob Shapiro reads the same
+constraints — interceptor depletion, a drained SPR (now 317 Mbbl, less than
+half its historical fill), oil-price pain — as implying the war
+<em>deteriorates</em>. We read them as binding the United States specifically,
+implying the war <em>migrates laterally</em> toward undefended targets. The
+disagreement is instrumented: deterioration predicts the §II spread index and
+Hawkes intensity decline from here; our framework predicts spread stays
+elevated while vertical amplitude stays capped. And the next settlement
+arbitrates the mechanism — arriving after a Brent spike above ~$105 favors the
+price-thermostat; arriving below ~$90 as Iranian reserves exhaust favors the
+fiscal clock. That discriminator is a standing ledger entry (p=0.30 on the
+thermostat side; our lean is the clock). The thermostat is also now a live
+covariate: US price pain, on an SPR-adjusted band, damps new escalation
+entries — inert at cheap oil, binding in spikes.
 </p>
 """, unsafe_allow_html=True)
 

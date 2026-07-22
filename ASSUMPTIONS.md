@@ -273,3 +273,32 @@ reopen-triggers. The register is maintenance-mode: new knobs enter with a tag.
   empirical-Bayes convergence (~3 vs 3.2) — convergence, not proof.
 - Remaining below-scratch items requiring resources: EIA key (user, free),
   CME settlement data (paid).
+
+
+## Shapiro layer (2026-07-22) — the rival framework, instrumented
+
+Jacob Shapiro (Geopolitical Cousins) reads the same constraints — interceptor
+depletion, drained SPR, oil-price pain — as implying the war *deteriorates*.
+Our data adjudication: the constraints all bind the US side (Iran held the
+strait ~92% shut across all 40 days of Brent >= $100 — the oil price is Iran's
+weapon, not its constraint), and the war has widened, not faded (lateral event
+share doubled 14% -> 27% from the full-magazine to the depleted phase; July is
+the broadest month on the 8c index). But his price-thermostat MECHANISM has
+real support: corr(Brent_t, escalation_t+1) = -0.37 in-war; deals arrived at
+$110 and $91, re-escalation at $75.
+
+New knobs (both DECLARED, tagged):
+- **THERMOSTAT = 0.3** (covariates.py): US oil-price pain damps entries into
+  S3/S4 by up to 30% at maximal pain. Evidence: the correlations above.
+  Inert at us_oil_pain = 0; add to the sensitivity sweep when it activates.
+- **SPR pain-band shift** (economic.py): the US pain band slides down as the
+  SPR drains below its ~650 Mbbl fill — up to -$15 at a 300 Mbbl floor
+  (currently 317 Mbbl -> band $86-136, us_oil_pain 0.10, first nonzero
+  reading of the war). Mapping declared, not estimated.
+
+**Framework discriminator (ledger entry 2026-07-22):** the next deal episode
+arriving with weekly Brent >= $105 = thermostat-forced (Shapiro); below ~$90
+with Iranian reserves near exhaustion = fiscal-clock-forced (Mearsheimer/IMF).
+p = 0.30 on the thermostat side (our lean is the clock). Weekly watchables:
+deterioration predicts 8c spread + Hawkes intensity DECLINE from here; our
+framework predicts spread stays elevated with vertical capped.
