@@ -302,3 +302,29 @@ with Iranian reserves near exhaustion = fiscal-clock-forced (Mearsheimer/IMF).
 p = 0.30 on the thermostat side (our lean is the clock). Weekly watchables:
 deterioration predicts 8c spread + Hawkes intensity DECLINE from here; our
 framework predicts spread stays elevated with vertical capped.
+
+
+## Walk-forward hindcast (2026-07-23) — `make replay`
+
+Point-in-time weekly refits (transits lagged 5d as actually published; events
+dated <= cutoff; covariates OFF — their effect sizes were calibrated on the
+full war; analogs ON — genuinely pre-war information), graded against realized
+labels. 30 forecasts, 16 cutoffs (Mar 22 - Jul 5):
+
+| horizon | RPS model | RPS persistence | RPS climatology | Brier(S2+) model / persist |
+|---|---|---|---|---|
+| 2w | **0.100** | 0.250 | 0.123 | 0.180 / 0.250 |
+| 4w | **0.120** | 0.271 | 0.134 | 0.252 / 0.500 |
+
+Model beats both benchmarks on average at both horizons; its edge concentrates
+at regime transitions (persistence ties in quiet weeks — model wins only
+44-57% of individual weeks — but avoids the catastrophic misses at the June
+reopening and July collapse, which is where probabilistic forecasts earn their
+keep). Calibration on the S2+ binary: mean forecast 64% vs realized 71%
+(gap -7pp — mildly UNDERconfident about persistence, consistent with the
+analog corpus importing too much fizzle-mass).
+
+LEAKAGE DISCLOSED: prior shape and event coding are retrospective. This grades
+the machinery, not out-of-sample skill; the live ledger is the only true test.
+Extension not built: model-vs-Polymarket through time (needs Polymarket CLOB
+price-history fetch for the Hormuz contracts — feasible, keyless).

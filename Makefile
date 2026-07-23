@@ -100,6 +100,9 @@ monitor:
 signals:
 	$(PY) -m src.alpha.signals
 
+replay:
+	$(PY) -m src.alpha.replay
+
 sensitivity:
 	$(PY) -m src.alpha.sensitivity
 

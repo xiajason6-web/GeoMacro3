@@ -28,12 +28,16 @@ MASS = {
 }
 
 
-def transit_weekly() -> pd.DataFrame:
+def transit_weekly(as_of=None) -> pd.DataFrame:
     cfg = load_config("sources")["portwatch"]
     pw = read_latest("portwatch").copy()
     pw["n_total"] = pd.to_numeric(pw["n_total"], errors="coerce")
     pw["obs_date"] = pd.to_datetime(pw["obs_date"])
     pw = pw.set_index("obs_date").sort_index()
+    if as_of is not None:
+        # point-in-time replay: PortWatch publishes ~5 days late, so at time
+        # as_of only observations through as_of - 5d were visible
+        pw = pw[pw.index <= pd.Timestamp(as_of) - pd.Timedelta(days=5)]
     ma7 = pw["n_total"].rolling(7, min_periods=4).mean()
 
     lo, hi = cfg["baseline_window"]
@@ -48,7 +52,7 @@ def transit_weekly() -> pd.DataFrame:
     return wk.dropna(subset=["frac"])
 
 
-def _coded_events_weekly():
+def _coded_events_weekly(as_of=None):
     """Weekly S3/S4/S5 evidence flags from coded events, if any are landed."""
     try:
         ev = read_latest("coded_events").copy()
@@ -56,6 +60,10 @@ def _coded_events_weekly():
         return None
     ev["date"] = pd.to_datetime(ev["date"], errors="coerce")
     ev = ev.dropna(subset=["date"]).set_index("date")
+    if as_of is not None:
+        ev = ev[ev.index <= pd.Timestamp(as_of)]
+        if not len(ev):
+            return None
     flags = pd.DataFrame({
         "s3_evidence": ev["rung"].eq("S3").resample("W-SUN").sum(),
         "s4_evidence": ev["rung"].eq("S4").resample("W-SUN").sum(),
@@ -65,10 +73,12 @@ def _coded_events_weekly():
     return flags
 
 
-def label_weeks(start: str = "2026-02-01") -> pd.DataFrame:
-    wk = transit_weekly()
+def label_weeks(start: str = "2026-02-01", as_of=None) -> pd.DataFrame:
+    """as_of enables point-in-time replay: only data visible at that date
+    (transits lagged 5d, events dated <= as_of) enters the labels."""
+    wk = transit_weekly(as_of=as_of)
     wk = wk[wk.index >= pd.Timestamp(start)]
-    flags = _coded_events_weekly()
+    flags = _coded_events_weekly(as_of=as_of)
     if flags is not None:
         wk = wk.join(flags)
     for c in ("s3_evidence", "s4_evidence", "s5_evidence"):
