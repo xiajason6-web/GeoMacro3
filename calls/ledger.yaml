@@ -1,91 +1,107 @@
-# PUBLIC CALLS LEDGER — append-only, git-timestamped.
-#
-# Rules of the ledger:
-#   - Calls are added with the model probability AT TIME OF CALL and explicit,
-#     Polymarket-grade resolution criteria checkable from this repo's own data
-#     lake (PortWatch transits, coded events). Git history is the timestamp.
-#   - NEVER edit or delete a call after commit. Corrections = a new call.
-#   - Grading is automatic (src/report/calls.py, run in every make refresh).
-#   - Brier score reported on all resolved calls (0 = perfect, 0.25 = coin-flip
-#     on 50/50 calls; lower is better).
-#
-# Criteria types the grader understands:
-#   portwatch_ma7_gte: {threshold, by}  — YES if Hormuz 7d-avg transit calls
-#       >= threshold on ANY date between made and by (mirrors Polymarket's
-#       "traffic returns to normal" resolution source and wording)
-#   coded_event: {rung, target_types (opt), by} — YES if any coded event with
-#       that rung (and target type, if given) occurs after made and by the date.
-#       Caveat: self-graded via this repo's LLM coder; criteria text is frozen.
-
 calls:
-  - id: 2026-07-21-normal-aug31
-    made: 2026-07-21
-    claim: "Strait of Hormuz traffic normalizes (7dMA transit calls >= 60) on some day by Aug 31, 2026"
-    p: 0.20
-    criteria: {type: portwatch_ma7_gte, threshold: 60, by: 2026-08-31}
-    comparison: "Polymarket Aug-31 market at ~14.5% same day; model modestly more optimistic"
-    status: open
-
-  - id: 2026-07-21-normal-sep30
-    made: 2026-07-21
-    claim: "Hormuz normalizes (7dMA >= 60) by Sep 30, 2026"
-    p: 0.33
-    criteria: {type: portwatch_ma7_gte, threshold: 60, by: 2026-09-30}
-    comparison: "Polymarket Sep market ~24.5% same day"
-    status: open
-
-  - id: 2026-07-21-normal-dec31
-    made: 2026-07-21
-    claim: "Hormuz normalizes (7dMA >= 60) by Dec 31, 2026"
-    p: 0.63
-    criteria: {type: portwatch_ma7_gte, threshold: 60, by: 2026-12-31}
-    comparison: "Polymarket Dec market ~54.5% same day"
-    status: open
-
-  - id: 2026-07-21-s3-recurrence-aug15
-    made: 2026-07-21
-    claim: "Another third-country Gulf infrastructure strike (S3 event on water/energy/export infra) occurs by Aug 15, 2026"
-    p: 0.72
-    criteria: {type: coded_event, rung: S3, target_types: [water, energy, export_infra], by: 2026-08-15}
-    comparison: "The horizontal-escalation attractor claim, made falsifiable"
-    status: open
-
-  - id: 2026-07-21-deal-episode-oct20
-    made: 2026-07-21
-    claim: "An announced ceasefire or deal episode (S5 event) occurs by Oct 20, 2026"
-    p: 0.53
-    criteria: {type: coded_event, rung: S5, by: 2026-10-20}
-    comparison: "Deal episodes are likely AND decay — this call is about occurrence, not durability"
-    status: open
-
-  - id: 2026-07-21-s4-excursion-oct20
-    made: 2026-07-21
-    claim: "An all-out-war excursion (S4 event: regime-target op / ground op / nuclear-threshold strike) occurs by Oct 20, 2026"
-    p: 0.32
-    criteria: {type: coded_event, rung: S4, by: 2026-10-20}
-    comparison: "Brief excursions likely, sustained S4 rare — this tests the excursion half"
-    status: open
-
-  - id: 2026-07-21-durable-normal-dec31
-    made: 2026-07-21
-    claim: "Hormuz normalization proves DURABLE: 7dMA >= 60 on 14+ consecutive days at some point by Dec 31, 2026"
-    p: 0.58
-    criteria: {type: portwatch_ma7_gte_consecutive, threshold: 60, days: 14, by: 2026-12-31}
-    comparison: "Thesis-consistent variant of the any-day touch call (0.69): excludes phantom lulls"
-    status: open
-
-  - id: 2026-07-21-war-still-on-dec31
-    made: 2026-07-21
-    claim: "The war is effectively over at year-end: 7dMA >= 60 on the last PortWatch observation of 2026"
-    p: 0.19
-    criteria: {type: portwatch_ma7_gte_on_date, threshold: 60, "on": "2026-12-31"}
-    comparison: "The occupancy question — the model's real view: 81% the war is still on at year-end"
-    status: open
-
-  - id: 2026-07-22-deal-driver-discriminator
-    made: 2026-07-22
-    claim: "The next deal episode (first coded S5 event after this date) arrives by Dec 31 in a week whose average Brent is >= $105 — i.e., the Shapiro price-thermostat, not the Iranian fiscal clock, forces it"
-    p: 0.30
-    criteria: {type: next_s5_brent, threshold: 105, by: 2026-12-31}
-    comparison: "Framework discriminator: >=105 = deal under price pressure (Shapiro); <105 with Iran's reserves near exhaustion = deal born of fiscal exhaustion (Mearsheimer + IMF clock). Our lean is the fiscal clock, hence p=0.30. Evidence for the thermostat exists (corr -0.37; deals at $110/$91, re-escalation at $75) so this is a live disagreement, not a strawman"
-    status: open
+- id: 2026-07-21-normal-aug31
+  made: 2026-07-21
+  claim: Strait of Hormuz traffic normalizes (7dMA transit calls >= 60) on some day by Aug 31, 2026
+  p: 0.2
+  criteria:
+    type: portwatch_ma7_gte
+    threshold: 60
+    by: 2026-08-31
+  comparison: Polymarket Aug-31 market at ~14.5% same day; model modestly more optimistic
+  status: open
+- id: 2026-07-21-normal-sep30
+  made: 2026-07-21
+  claim: Hormuz normalizes (7dMA >= 60) by Sep 30, 2026
+  p: 0.33
+  criteria:
+    type: portwatch_ma7_gte
+    threshold: 60
+    by: 2026-09-30
+  comparison: Polymarket Sep market ~24.5% same day
+  status: open
+- id: 2026-07-21-normal-dec31
+  made: 2026-07-21
+  claim: Hormuz normalizes (7dMA >= 60) by Dec 31, 2026
+  p: 0.63
+  criteria:
+    type: portwatch_ma7_gte
+    threshold: 60
+    by: 2026-12-31
+  comparison: Polymarket Dec market ~54.5% same day
+  status: open
+- id: 2026-07-21-s3-recurrence-aug15
+  made: 2026-07-21
+  claim: Another third-country Gulf infrastructure strike (S3 event on water/energy/export infra) occurs
+    by Aug 15, 2026
+  p: 0.72
+  criteria:
+    type: coded_event
+    rung: S3
+    target_types:
+    - water
+    - energy
+    - export_infra
+    by: 2026-08-15
+  comparison: The horizontal-escalation attractor claim, made falsifiable
+  status: resolved
+  outcome: 'NO'
+  evidence: no qualifying event through 2026-08-15
+  resolved_at: '2026-08-19'
+- id: 2026-07-21-deal-episode-oct20
+  made: 2026-07-21
+  claim: An announced ceasefire or deal episode (S5 event) occurs by Oct 20, 2026
+  p: 0.53
+  criteria:
+    type: coded_event
+    rung: S5
+    by: 2026-10-20
+  comparison: Deal episodes are likely AND decay — this call is about occurrence, not durability
+  status: open
+- id: 2026-07-21-s4-excursion-oct20
+  made: 2026-07-21
+  claim: 'An all-out-war excursion (S4 event: regime-target op / ground op / nuclear-threshold strike)
+    occurs by Oct 20, 2026'
+  p: 0.32
+  criteria:
+    type: coded_event
+    rung: S4
+    by: 2026-10-20
+  comparison: Brief excursions likely, sustained S4 rare — this tests the excursion half
+  status: open
+- id: 2026-07-21-durable-normal-dec31
+  made: 2026-07-21
+  claim: 'Hormuz normalization proves DURABLE: 7dMA >= 60 on 14+ consecutive days at some point by Dec
+    31, 2026'
+  p: 0.58
+  criteria:
+    type: portwatch_ma7_gte_consecutive
+    threshold: 60
+    days: 14
+    by: 2026-12-31
+  comparison: 'Thesis-consistent variant of the any-day touch call (0.69): excludes phantom lulls'
+  status: open
+- id: 2026-07-21-war-still-on-dec31
+  made: 2026-07-21
+  claim: 'The war is effectively over at year-end: 7dMA >= 60 on the last PortWatch observation of 2026'
+  p: 0.19
+  criteria:
+    type: portwatch_ma7_gte_on_date
+    threshold: 60
+    'on': '2026-12-31'
+  comparison: 'The occupancy question — the model''s real view: 81% the war is still on at year-end'
+  status: open
+- id: 2026-07-22-deal-driver-discriminator
+  made: 2026-07-22
+  claim: The next deal episode (first coded S5 event after this date) arrives by Dec 31 in a week whose
+    average Brent is >= $105 — i.e., the Shapiro price-thermostat, not the Iranian fiscal clock, forces
+    it
+  p: 0.3
+  criteria:
+    type: next_s5_brent
+    threshold: 105
+    by: 2026-12-31
+  comparison: 'Framework discriminator: >=105 = deal under price pressure (Shapiro); <105 with Iran''s
+    reserves near exhaustion = deal born of fiscal exhaustion (Mearsheimer + IMF clock). Our lean is the
+    fiscal clock, hence p=0.30. Evidence for the thermostat exists (corr -0.37; deals at $110/$91, re-escalation
+    at $75) so this is a live disagreement, not a strawman'
+  status: open
