@@ -21,7 +21,10 @@ calls:
     threshold: 60
     by: 2026-09-30
   comparison: Polymarket Sep market ~24.5% same day
-  status: open
+  status: resolved
+  outcome: 'NO'
+  evidence: never reached 60 through 2026-09-30
+  resolved_at: '2026-10-06'
 - id: 2026-07-21-normal-dec31
   made: 2026-07-21
   claim: Hormuz normalizes (7dMA >= 60) by Dec 31, 2026
