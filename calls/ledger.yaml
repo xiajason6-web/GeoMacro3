@@ -62,7 +62,10 @@ calls:
     rung: S5
     by: 2026-10-20
   comparison: Deal episodes are likely AND decay — this call is about occurrence, not durability
-  status: open
+  status: resolved
+  outcome: 'NO'
+  evidence: no qualifying event through 2026-10-20
+  resolved_at: '2026-10-24'
 - id: 2026-07-21-s4-excursion-oct20
   made: 2026-07-21
   claim: 'An all-out-war excursion (S4 event: regime-target op / ground op / nuclear-threshold strike)
@@ -73,7 +76,10 @@ calls:
     rung: S4
     by: 2026-10-20
   comparison: Brief excursions likely, sustained S4 rare — this tests the excursion half
-  status: open
+  status: resolved
+  outcome: 'NO'
+  evidence: no qualifying event through 2026-10-20
+  resolved_at: '2026-10-24'
 - id: 2026-07-21-durable-normal-dec31
   made: 2026-07-21
   claim: 'Hormuz normalization proves DURABLE: 7dMA >= 60 on 14+ consecutive days at some point by Dec
